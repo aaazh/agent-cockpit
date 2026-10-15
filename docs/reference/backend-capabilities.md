@@ -1,6 +1,6 @@
 # Backend Capabilities
 
-Agent Cockpit supports Claude Code, OpenAI Codex, Kiro, and OpenCode. The exact
+Agent Cockpit supports Claude Code, OpenAI Codex, Kiro, OpenCode, and Grok Build. The exact
 feature surface differs because each CLI harness exposes different protocols and
 metadata.
 
@@ -65,3 +65,20 @@ page summarizes the user-facing shape.
 - no confirmed native durable-memory directory for Agent Cockpit to import or
   watch. OpenCode memory integration uses Agent Cockpit's Memory MCP tools
   instead of backend-native memory capture.
+
+## Grok Build
+
+- persistent ACP with native xAI extensions and session history recovery;
+- shared terminal auth or explicit isolated account profiles;
+- thinking, tools, grouped foreground/background subagents, native questions,
+  plan approval and mid-turn input;
+- native goal set/clear/pause/resume with a soft token budget;
+- per-model input/output/cache usage and reported model cost when complete;
+- optional profile-specific account tier, quota, balances, and reset date;
+- Memory/KB MCP injection and restricted sequential text processor calls;
+- verified grok-4.7 image input/output and native PDF input;
+- active-turn reattachment, native memory import, audio/video, and unverified
+  model modalities remain unsupported.
+
+Native compatibility is verified on Grok Build 1.0.52, macOS arm64. See the
+[Grok implementation specification](../spec-grok-build.md) for platform limits.

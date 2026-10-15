@@ -55,6 +55,9 @@ describe('goalState helpers', () => {
 
   test('cleans pasted goal card text without stripping ordinary Codex objectives', () => {
     expect(cleanGoalObjectiveText('Goal setcodexResearch the benefits of banana')).toBe('Research the benefits of banana');
+    expect(cleanGoalObjectiveText('Goal setgrok-buildShip Grok support')).toBe('Ship Grok support');
+    expect(cleanGoalObjectiveText('Goal setGrok BuildShip Grok support')).toBe('Ship Grok support');
+    expect(cleanGoalObjectiveText('Grok Build should keep this prefix')).toBe('Grok Build should keep this prefix');
     expect(cleanGoalObjectiveText('Goal achieved 20s Goal setcodexResearch the benefits of banana')).toBe('Research the benefits of banana');
     expect(cleanGoalObjectiveText('Codex should keep this prefix')).toBe('Codex should keep this prefix');
     expect(cleanGoalObjectiveText('Goal settings should stay intact')).toBe('Goal settings should stay intact');

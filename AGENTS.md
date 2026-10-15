@@ -107,6 +107,38 @@ Codex App Server behavior is split across `src/services/backends/codex.ts`, `cod
 - When changing hand-typed Codex app-server protocol shapes, run or document the `codex app-server --enable goals generate-ts --out <DIR>` drift-diff procedure from `docs/spec-backend-services.md` and inspect `codexProtocol.ts`, `codexEvents.ts`, `codexModels.ts`, and `codexStreamDispatch.ts`.
 - No real-CLI Codex e2e suite exists today. Do not imply one is part of normal drift validation; creating one is separate scope unless a future issue or ADR adds that requirement.
 
+# Grok Build Protocol Compatibility
+
+Grok Build uses ACP plus native extensions through the focused
+`src/services/backends/grok*.ts` modules. Review and extend the focused Grok
+transport/event/backend/integration/process tests when changing protocol shapes,
+session ownership, questions/plans, goals, usage, or process lifecycle. Run
+`npm run e2e:grok-build` with an authenticated real `grok` for version-drift
+validation; it is opt-in and uses temporary fixture workspaces. Current native
+compatibility evidence is Grok Build 1.0.52 on macOS arm64. Windows resolver and
+wrapper tests do not replace native Windows/Linux runs.
+
+`BackendRegistry.shutdownAll()` also runs after CLI updates. Keep adapter
+shutdown reusable for later runtimes, and close startups that complete after
+their conversation was reset. The native Grok suite verifies goal controls,
+full autonomous completion, and real Memory/KB/Workspace Context/Routine paths.
+Run `npm run e2e:grok-build-ui` for native desktop/mobile compatibility; its
+fixture server is PM2-managed and isolated from normal server data. Both runners
+emit temporary reports with CLI/OS/revision evidence. Small native goals can take
+several minutes; retain the external completion deadline and drain updates after
+the complete notification. Configured API keys require headless `xai.api_key`
+authentication even when 1.0.52 omits that method from its advertised list; cached
+terminal credentials take precedence. Real valid-key/two-account runs remain
+separate from missing-auth/invalid-key fixtures.
+
+Preserve the zero-tool preflight and text wrapping for restricted one-shots,
+so native slash commands cannot bypass tool restrictions. Native shell groups
+may detach: root-group termination alone is insufficient. Keep descendant
+identity tracking and background-child/parent completion draining, and never
+automatically retry interrupted tool work. Keep auth isolation separate from
+the shared CLI executable/update location. See `docs/spec-grok-build.md` and
+ADR-0092.
+
 # Server Management
 
 NEVER run `node server.js` directly. This causes orphan processes and port conflicts.

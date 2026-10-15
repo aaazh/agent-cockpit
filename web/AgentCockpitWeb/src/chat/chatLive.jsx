@@ -852,6 +852,7 @@ export function ChatLive({ convId, onArchived, onDeleted, onOpenMemoryUpdate, on
                 convId={convId}
                 interaction={pendingInteraction}
                 respondPending={!!respondPending}
+                allowPlanFeedback={conv.backend === 'grok-build'}
               />
             ) : null}
             {streamError && (

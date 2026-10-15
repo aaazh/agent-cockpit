@@ -238,7 +238,7 @@ export interface CurrentUserResponse {
 export interface CliProfile {
   id: string;
   name: string;
-  harness: 'codex' | 'claude-code' | 'kiro' | 'opencode';
+  harness: 'codex' | 'claude-code' | 'kiro' | 'opencode' | 'grok-build';
   protocol?: 'standard' | 'interactive';
   opencode?: {
     provider?: string;
@@ -334,7 +334,7 @@ export interface ConversationInputResponse {
   mode: 'stdin' | 'message';
 }
 
-export type ThreadGoalBackend = 'codex' | 'claude-code' | 'claude-code-interactive';
+export type ThreadGoalBackend = 'codex' | 'claude-code' | 'claude-code-interactive' | 'grok-build';
 export type ThreadGoalStatus = 'active' | 'paused' | 'budgetLimited' | 'complete' | 'cleared' | 'unknown';
 export type ThreadGoalSource = 'native' | 'transcript' | 'runtime' | 'unknown';
 

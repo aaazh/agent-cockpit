@@ -2,6 +2,18 @@
 
 [← Back to index](SPEC.md)
 
+Grok Build is the physical `CliHarness` and runtime backend `grok-build`. Its
+profiles use existing `command`, `configDir`, and string `env` fields; no
+additional persisted provider object is introduced. `ThreadGoal.backend` and
+`GoalEvent.backend` accept `grok-build`. The existing native session ID, runtime
+PID, artifact, recovery, stream, and per-model usage contracts persist normalized
+events. Costs are reported native ticks divided by `1e10`, with incomplete costs
+remaining unknown. Input/cache buckets are disjoint. The browser-safe
+`GrokBillingSnapshot` / `GrokBillingResponse` in `src/contracts/grokBilling.ts`
+carry optional billing fields plus `fetchedAt` and `profileId`; billing caches
+are memory-only and keyed by the effective profile fingerprint. Exact field
+shapes and native normalization are in [Grok Build](spec-grok-build.md).
+
 ---
 
 ## File Structure
@@ -672,7 +684,7 @@ Together these guarantee that a workspace index always parses on disk and that c
     id: string,                 // UUIDv4
     title: string,              // Auto-set from first user message (max 80 chars)
     titleManuallySet?: boolean, // true once `renameConversation()` has run. Locks the title against all automatic mutations (resetSession, addMessage's first-message snapshot, generateAndUpdateTitle). Absent when the title is still auto-managed.
-    backend: string,            // Internal backend id: 'claude-code' | 'claude-code-interactive' | 'kiro' | 'codex' | 'opencode'. Kept for back-compat and transcript rendering. Some backends share a physical CLI harness/profile.
+    backend: string,            // Internal backend id: 'claude-code' | 'claude-code-interactive' | 'kiro' | 'codex' | 'opencode' | 'grok-build'. Kept for back-compat and transcript rendering. Some backends share a physical CLI harness/profile.
     cliProfileId?: string,      // Runtime CLI profile selected for this conversation. When present, runtime adapter selection is derived from Settings.cliProfiles[id].harness plus Claude Code's optional protocol while command/auth/config still come from the physical profile.
     model?: string,             // Full model ID (e.g. 'claude-opus-5[1m]', 'claude-fable-5', 'claude-sonnet-5', 'claude-haiku-4-5'); absent = backend default
     effort?: string,            // Adaptive reasoning effort: 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max' | 'ultra'; absent = model default. Supported values are backend/model-specific. Stale unsupported values are reconciled to `high` when available, then the first supported level, or removed when the model has no effort support.
@@ -1047,14 +1059,14 @@ Audits are append-only review records. They do not change `snapshot.json` direct
   workspacePath: string,
   sources: [{
     id: 'agents' | 'claude' | 'kiro',
-    harness: 'codex' | 'claude-code' | 'kiro' | 'opencode',
+    harness: 'codex' | 'claude-code' | 'kiro' | 'opencode' | 'grok-build',
     label: string,
     expectedPath: string,
     present: boolean,
     paths: string[]        // workspace-relative files detected for that source
   }],
   harnesses: [{
-    harness: 'codex' | 'claude-code' | 'kiro' | 'opencode',
+    harness: 'codex' | 'claude-code' | 'kiro' | 'opencode' | 'grok-build',
     label: string,
     sourceId: 'agents' | 'claude' | 'kiro',
     expectedPath: string,
@@ -1661,7 +1673,7 @@ type CliInstallMethod = 'npm-global' | 'self-update' | 'unknown' | 'missing';
 
 interface CliUpdateStatus {
   id: string;
-  harness: 'claude-code' | 'codex' | 'kiro' | 'opencode';
+  harness: 'claude-code' | 'codex' | 'kiro' | 'opencode' | 'grok-build';
   label: string;
   command: string;
   resolvedPath: string | null;
@@ -1759,13 +1771,13 @@ interface CliUpdatesResponse {
 }
 ```
 
-`cliProfiles` is the global list of runnable CLI harness identities. Fresh settings start with an empty `cliProfiles` array and no provider default; the app does not create a Claude Code profile until a user configures Claude Code, selects a Claude backend explicitly, or a legacy settings/conversation migration requires it ([ADR-0061](adr/0061-use-configured-cli-profiles-as-default-runtime.md)). The current implementation supports server-configured and account/custom profiles for Codex and Claude Code, self-configured profiles for Kiro, and self-configured profiles for OpenCode ([ADR-0076](adr/0076-add-opencode-cli-profiles.md)). It resolves `cliProfileId → CliProfile` for command/auth/config plus the runtime communication path. Claude Code profiles also carry `protocol: "standard" | "interactive"`: `standard` maps to internal backend `claude-code`, while `interactive` maps to internal backend `claude-code-interactive`. `claude-code-interactive` is therefore not a separate profile harness; it shares `harness: "claude-code"` for `command`, `env`, `CLAUDE_CONFIG_DIR`, auth, plan usage, and CLI update targets.
+`cliProfiles` is the global list of runnable CLI harness identities. Fresh settings start with an empty `cliProfiles` array and no provider default; the app does not create a Claude Code profile until a user configures Claude Code, selects a Claude backend explicitly, or a legacy settings/conversation migration requires it ([ADR-0061](adr/0061-use-configured-cli-profiles-as-default-runtime.md)). The current implementation supports server-configured and account/custom profiles for Codex, Claude Code, and Grok Build, self-configured profiles for Kiro, and self-configured profiles for OpenCode ([ADR-0076](adr/0076-add-opencode-cli-profiles.md)). It resolves `cliProfileId → CliProfile` for command/auth/config plus the runtime communication path. Claude Code profiles also carry `protocol: "standard" | "interactive"`: `standard` maps to internal backend `claude-code`, while `interactive` maps to internal backend `claude-code-interactive`. `claude-code-interactive` is therefore not a separate profile harness; it shares `harness: "claude-code"` for `command`, `env`, `CLAUDE_CONFIG_DIR`, auth, plan usage, and CLI update targets.
 
 Claude Code profiles may also carry `claudeCode.provider`, normalized to `"anthropic"` when missing and currently either `"anthropic"` or `"bedrock"` ([ADR-0090](adr/0090-represent-claude-code-bedrock-as-a-cli-profile-provider.md)). Anthropic profiles use the static Claude Code model catalog, where `claude-sonnet-5-5` is the default and models such as `claude-opus-5-5[1m]` and `claude-sonnet-5-5` support `low`, `medium`, `high`, `xhigh`, and `max` effort. Bedrock profiles keep AWS/Claude runtime values in the existing `env` object (`CLAUDE_CODE_USE_BEDROCK`, `AWS_REGION`/`AWS_DEFAULT_REGION`, `AWS_PROFILE`, bearer-token env vars, etc.) and store model routing separately at `claudeCode.bedrock.inferenceProfiles[]`. Each inference profile row is `{ id, name, inferenceProfileId, baseModelId?, default? }`: `name` is the user-facing model label, `inferenceProfileId` is the exact Bedrock inference profile ID or ARN passed to Claude Code as `--model`, `baseModelId` optionally points at a known static Claude model such as `claude-opus-5[1m]` or `claude-fable-5` so Agent Cockpit can inherit capabilities/effort metadata, and only one row can be default. `SettingsService.saveSettings()` trims row strings, drops all-empty rows, generates stable missing row IDs from the name/profile id, keeps only the first `default:true`, and marks the first row default when none is selected.
 
 OpenCode profiles may carry `opencode.provider`; this selects the OpenCode provider such as `deepseek`, `groq`, or `openrouter` and does not create new Cockpit CLI harnesses for those API providers. Server-configured profiles preserve existing behavior where each adapter uses the server user's already-configured CLI state. Codex profiles apply `command`, merged `env`, and `configDir → CODEX_HOME` for `codex app-server`, `codex exec`, MCP config collision reads, Codex plan usage, and remote auth jobs. Claude Code profiles apply `command`, merged `env`, and `configDir → CLAUDE_CONFIG_DIR` for both standard streaming and interactive hidden PTY sessions, one-shots, native memory path resolution/capture, Claude plan usage, and remote auth jobs; Bedrock provider profiles pass their selected inference profile ID/ARN as the model instead of a Claude alias. OpenCode profiles are self-configured in this pass: `SettingsService.saveSettings()` forces `authMode: "server-configured"`, strips `configDir`, `env`, and profile-level OpenCode model defaults, preserves the optional `command` override, and leaves model choice to the chat composer or feature-specific model selectors. Provider credentials remain managed by OpenCode's own configuration/auth files, and Cockpit-assisted OpenCode login is not supported yet. For implemented account harnesses, `configDir` takes precedence over the matching env key when both are present. If an explicit Codex or Claude Code account profile starts a remote auth check/job without a `configDir`, the server persists a deterministic default under `data/cli-profiles/<slug>-<sha1>/` so authentication and later runtime spawns use the same isolated config/auth home.
 
-Welcome setup auth can create first-run account profiles named `setup-codex-account` and `setup-claude-code-account` ([ADR-0060](adr/0060-use-cli-profile-auth-for-setup-login.md), [ADR-0064](adr/0064-use-system-cli-auth-for-welcome-setup.md)); those setup profiles intentionally omit `configDir` so Agent Cockpit and terminal `codex` / `claude` commands share the user's normal CLI auth home. Legacy setup profiles that have a generated `configDir` or auth-home env key (`CODEX_HOME` / `CLAUDE_CONFIG_DIR`) are migrated at the settings/profile-auth boundary by removing those fields, so both setup-auth routes and direct profile checks use system auth. When no default exists, or when a setup profile replaces that harness's server-configured default, it becomes `defaultCliProfileId` so the completed login is used by new conversations. Kiro profiles are self-configured only: `SettingsService.saveSettings()` forces `authMode: "server-configured"` and strips `command`, `configDir`, `env`, and `protocol` because `kiro-cli` has no dedicated documented profile directory override and isolating via `HOME` changes unrelated process behavior. Deterministic server-configured IDs are `server-configured-claude-code`, `server-configured-kiro`, `server-configured-codex`, and `server-configured-opencode`. `SettingsService.getSettings()` only creates a server-configured physical profile for persisted legacy `defaultBackend` values and otherwise promotes the first enabled existing profile when no default is selected.
+Welcome setup auth can create first-run account profiles named `setup-codex-account`, `setup-claude-code-account`, and `setup-grok-build-account` ([ADR-0060](adr/0060-use-cli-profile-auth-for-setup-login.md), [ADR-0064](adr/0064-use-system-cli-auth-for-welcome-setup.md)); those setup profiles intentionally omit `configDir` so Agent Cockpit and terminal `codex` / `claude` / `grok` commands share the user's normal CLI auth home. Legacy setup profiles that have a generated `configDir` or auth-home env key (`CODEX_HOME` / `CLAUDE_CONFIG_DIR` / `GROK_HOME`) are migrated at the settings/profile-auth boundary by removing those fields, so both setup-auth routes and direct profile checks use system auth. When no default exists, or when a setup profile replaces that harness's server-configured default, it becomes `defaultCliProfileId` so the completed login is used by new conversations. Kiro profiles are self-configured only: `SettingsService.saveSettings()` forces `authMode: "server-configured"` and strips `command`, `configDir`, `env`, and `protocol` because `kiro-cli` has no dedicated documented profile directory override and isolating via `HOME` changes unrelated process behavior. Deterministic server-configured IDs are `server-configured-claude-code`, `server-configured-kiro`, `server-configured-codex`, `server-configured-opencode`, and `server-configured-grok-build`. `SettingsService.getSettings()` only creates a server-configured physical profile for persisted legacy `defaultBackend` values and otherwise promotes the first enabled existing profile when no default is selected.
 
 `defaultCliProfileId` points at the CLI profile used by the V2 UI for new conversations. New conversations still accept/return `backend` for compatibility, but new profile-based selection derives `backend` from `CliProfile.harness + CliProfile.protocol` instead of exposing a separate backend/provider picker. `ChatService.createConversation()` accepts an optional `cliProfileId`; when supplied without an explicit backend, the profile's protocol-derived backend is stored. A conflicting explicit `backend` is rejected. When neither profile nor backend is supplied, the service uses `settings.defaultCliProfileId` when valid and derives the backend from that profile; otherwise it falls back only to legacy `settings.defaultBackend` when present. If neither is configured, creation fails with a CLI-profile-required error. When only a backend is supplied, the service derives `cliProfileId` from the selected backend's physical server-configured profile. Legacy settings and request payloads that still provide `CliProfile.vendor` are accepted only as migration input, normalized to `harness` on read/write, and never emitted as the canonical saved field.
 

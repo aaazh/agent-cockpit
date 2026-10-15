@@ -1,6 +1,6 @@
 import type { CliCommunicationProtocol, CliHarness, CliProfile, Settings } from '../types';
 
-export const SUPPORTED_CLI_HARNESSES: CliHarness[] = ['claude-code', 'kiro', 'codex', 'opencode'];
+export const SUPPORTED_CLI_HARNESSES: CliHarness[] = ['claude-code', 'kiro', 'codex', 'opencode', 'grok-build'];
 export const CLAUDE_CODE_INTERACTIVE_BACKEND_ID = 'claude-code-interactive';
 export const CLAUDE_CODE_STANDARD_PROTOCOL: CliCommunicationProtocol = 'standard';
 export const CLAUDE_CODE_INTERACTIVE_PROTOCOL: CliCommunicationProtocol = 'interactive';
@@ -12,6 +12,7 @@ const HARNESS_LABELS: Record<CliHarness, string> = {
   kiro: 'Kiro',
   codex: 'Codex',
   opencode: 'OpenCode',
+  'grok-build': 'Grok Build',
 };
 
 export function isCliHarness(value: string | undefined | null): value is CliHarness {
@@ -54,7 +55,7 @@ export function serverConfiguredCliProfileId(harness: CliHarness): string {
 
 export function isSetupAccountCliProfile(profile: Pick<CliProfile, 'id' | 'harness' | 'authMode'>): boolean {
   if (profile.authMode !== 'account') return false;
-  if (profile.harness !== 'claude-code' && profile.harness !== 'codex') return false;
+  if (profile.harness !== 'claude-code' && profile.harness !== 'codex' && profile.harness !== 'grok-build') return false;
   return profile.id === `setup-${profile.harness}-account`
     || profile.id.startsWith(`setup-${profile.harness}-account-`);
 }

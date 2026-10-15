@@ -10,6 +10,7 @@ import {
 } from './backends/claudeInteractiveCompatibility';
 import { resolveCodexCliRuntime } from './backends/codex';
 import { resolveOpenCodeCliRuntime } from './backends/opencode';
+import { resolveGrokCliRuntime } from './backends/grok';
 import { buildCliCommandInvocation, windowsCmdCommandLine, type CliCommandResolution } from './cliCommandResolver';
 import { serverConfiguredCliProfileId } from './cliProfiles';
 import { ensureWindowsCliToolWrappers } from './windowsCliToolWrappers';
@@ -34,6 +35,7 @@ const HARNESS_LABELS: Record<CliHarness, string> = {
   codex: 'Codex',
   kiro: 'Kiro',
   opencode: 'OpenCode',
+  'grok-build': 'Grok Build',
 };
 
 const HARNESS_DEFAULT_COMMANDS: Record<CliHarness, string> = {
@@ -41,11 +43,13 @@ const HARNESS_DEFAULT_COMMANDS: Record<CliHarness, string> = {
   codex: 'codex',
   kiro: 'kiro-cli',
   opencode: 'opencode',
+  'grok-build': 'grok',
 };
 
 const HARNESS_NPM_PACKAGES: Partial<Record<CliHarness, string>> = {
   'claude-code': '@anthropic-ai/claude-code',
   codex: '@openai/codex',
+  'grok-build': '@xai-official/grok',
 };
 
 interface CliRuntimeTarget extends CliCommandResolution {
@@ -246,6 +250,14 @@ export class CliUpdateService {
     if (profile.harness === 'codex') return resolveCodexCliRuntime(profile);
     if (profile.harness === 'claude-code') return resolveClaudeCliRuntime(profile);
     if (profile.harness === 'opencode') return resolveOpenCodeCliRuntime(profile);
+    if (profile.harness === 'grok-build') {
+      const runtime = resolveGrokCliRuntime(profile);
+      const env = { ...runtime.env };
+      // The npm/native updater installs the shared executable, not account credentials.
+      if (process.env.GROK_HOME) env.GROK_HOME = process.env.GROK_HOME;
+      else delete env.GROK_HOME;
+      return { ...runtime, env };
+    }
     return {
       command: HARNESS_DEFAULT_COMMANDS.kiro,
       env: { ...process.env },
@@ -338,6 +350,12 @@ export class CliUpdateService {
 
   private async _detectInstallMethod(target: CliRuntimeTarget, resolvedPath: string | null): Promise<ProbeResult> {
     const npmPackage = HARNESS_NPM_PACKAGES[target.harness];
+    if (target.harness === 'grok-build' && process.platform === 'win32') {
+      const prefix = windowsCliToolsDirFromEnv(target.env);
+      if (prefix && fs.existsSync(path.join(prefix, 'node_modules', '@xai-official', 'grok', 'bin', 'grok'))) {
+        return { installMethod: 'npm-global', resolvedPath, npmPrefix: prefix };
+      }
+    }
     if (npmPackage && resolvedPath) {
       const realResolved = await safeRealpath(resolvedPath);
       const inferredPrefix = inferNpmPrefixFromPackagePath(realResolved || resolvedPath, npmPackage);
@@ -353,13 +371,19 @@ export class CliUpdateService {
         }
       }
     }
-    if (target.harness === 'kiro' || target.harness === 'opencode') {
+    if (target.harness === 'kiro' || target.harness === 'opencode' || target.harness === 'grok-build') {
       return { installMethod: 'self-update', resolvedPath };
     }
     return { installMethod: resolvedPath ? 'unknown' : 'missing', resolvedPath };
   }
 
   private async _latestVersion(target: CliRuntimeTarget, installMethod: CliInstallMethod): Promise<string | null> {
+    if (target.harness === 'grok-build' && installMethod === 'self-update') {
+      const out = await this._exec(target.command, [...(target.argsPrefix || []), '--no-auto-update', 'update', '--check', '--json'], target.env, EXEC_TIMEOUT_MS);
+      const result = JSON.parse(out) as { latestVersion?: string; error?: string | null };
+      if (result.error) throw new Error(result.error);
+      return result.latestVersion ? parseVersion(result.latestVersion) : null;
+    }
     if (installMethod !== 'npm-global') return null;
     const npmPackage = HARNESS_NPM_PACKAGES[target.harness];
     if (!npmPackage) return null;
@@ -382,6 +406,9 @@ export class CliUpdateService {
     }
     if (target.harness === 'opencode' && probe.installMethod === 'self-update') {
       return [target.command, ...(target.argsPrefix || []), 'upgrade'];
+    }
+    if (target.harness === 'grok-build' && probe.installMethod === 'self-update') {
+      return [target.command, ...(target.argsPrefix || []), 'update'];
     }
     return null;
   }
@@ -438,11 +465,12 @@ export class CliUpdateService {
 
   private _repairWindowsCliToolWrapper(target: CliRuntimeTarget, current: CliUpdateStatus): UpdateStep | null {
     if (process.platform !== 'win32') return null;
-    if (target.harness !== 'codex' && target.harness !== 'claude-code') return null;
+    if (target.harness !== 'codex' && target.harness !== 'claude-code' && target.harness !== 'grok-build') return null;
     const npmPackage = HARNESS_NPM_PACKAGES[target.harness];
     if (!npmPackage || !current.resolvedPath) return null;
-    const npmPrefix = inferNpmPrefixFromPackagePath(current.resolvedPath, npmPackage);
     const expectedPrefix = windowsCliToolsDirFromEnv(target.env);
+    const npmPrefix = target.harness === 'grok-build' && current.installMethod === 'npm-global'
+      ? expectedPrefix : inferNpmPrefixFromPackagePath(current.resolvedPath, npmPackage);
     const expectedReal = expectedPrefix ? safeRealpathSync(expectedPrefix) || expectedPrefix : null;
     if (!npmPrefix || !expectedPrefix || !expectedReal || pathKey(npmPrefix) !== pathKey(expectedReal)) return null;
     const result = ensureWindowsCliToolWrappers({
@@ -464,7 +492,7 @@ export class CliUpdateService {
 }
 
 function isCliHarnessValue(value: unknown): value is CliHarness {
-  return value === 'codex' || value === 'claude-code' || value === 'kiro' || value === 'opencode';
+  return value === 'codex' || value === 'claude-code' || value === 'kiro' || value === 'opencode' || value === 'grok-build';
 }
 
 function inferNpmPrefixFromPackagePath(resolvedPath: string, npmPackage: string): string | null {

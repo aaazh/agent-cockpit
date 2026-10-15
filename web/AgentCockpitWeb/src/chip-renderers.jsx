@@ -1,4 +1,5 @@
 import { UsageProjection } from './usageProjection.ts';
+import { GrokBillingSection } from './chat/grokBillingSection.jsx';
 /* ============================================================
    ContextChip renderers — per-CLI registry
 
@@ -614,7 +615,7 @@ function CodexTokenCard({ usage, planUsage }){
 function DefaultTokenCard({ usage }){
   const input  = usage.inputTokens  || 0;
   const output = usage.outputTokens || 0;
-  const total  = input + output;
+  const total  = _usageTotalTokens(usage);
   const costSuffix = _costChipSuffix(usage);
   return (
     <>
@@ -631,6 +632,8 @@ function DefaultTokenCard({ usage }){
           <div className="tt-rows">
             <div className="tt-kv"><span>Input</span><b>{_fmtInt(input)}</b></div>
             <div className="tt-kv"><span>Output</span><b>{_fmtInt(output)}</b></div>
+            {usage.cacheReadTokens > 0 ? <div className="tt-kv"><span>Cache read</span><b>{_fmtInt(usage.cacheReadTokens)}</b></div> : null}
+            {usage.cacheWriteTokens > 0 ? <div className="tt-kv"><span>Cache write</span><b>{_fmtInt(usage.cacheWriteTokens)}</b></div> : null}
           </div>
         </div>
       ) : null}
@@ -639,6 +642,10 @@ function DefaultTokenCard({ usage }){
 }
 
 const CHIP_RENDERERS = {
+  'grok-build': {
+    renderChipText(usage){ return CHIP_RENDERERS.codex.renderChipText(usage); },
+    renderTooltipCard(usage, opts){ return <><DefaultTokenCard usage={usage}/><GrokBillingSection data={opts && opts.planUsage}/></>; },
+  },
   'claude-code': {
     renderChipText(usage){
       const total = _usageTotalTokens(usage);

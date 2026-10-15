@@ -109,6 +109,7 @@ function GoalStrip({ convId, goal, streaming, sending }){
         <span className="goal-status">{goalStatusLabel(status)}</span>
         {elapsed !== '0s' ? <span className="goal-elapsed">{elapsed}</span> : null}
         {objective ? <span className="goal-objective" title={objective}>{objective}</span> : null}
+        {goal.backend === 'grok-build' && typeof goal.tokenBudget === 'number' ? <span className="goal-elapsed" title="Grok checks token budgets between work steps, so execution can exceed the budget.">Soft budget: {goal.tokenBudget.toLocaleString()}</span> : null}
       </div>
       <div className="goal-strip-actions">
         {canPause ? (

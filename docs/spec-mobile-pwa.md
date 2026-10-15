@@ -2,6 +2,26 @@
 
 [← Back to index](SPEC.md)
 
+Grok Build uses the shared mobile profile/model/effort, interaction, tool/Agent,
+artifact, and native goal flows. Its goal strip labels a supplied token budget
+**Soft budget**. Its usage bar labels the value **Reported model cost** and
+shows `n/a` when no reported/estimated cost is available. The focused
+`src/grokBilling.tsx` component calls `AgentCockpitAPI.getGrokBilling(profileId)`
+on profile or message-count change, displays available tier, credit percentage,
+prepaid balance, and reset date, hides old profile data immediately on switching,
+ignores late responses after effect cleanup, and hides unavailable fields or
+failed snapshots. The billing response lives in the browser-safe shared
+`src/contracts/grokBilling.ts`. Administrative profile auth/install/update
+controls remain on desktop. See [Grok Build](spec-grok-build.md).
+
+Plan approval projection accepts `tool_activity` with `isPlanMode:true` and
+`planAction:'exit'`, including absent plan content, and creates both the pending
+approval card and notification. The empty-content fallback is **Plan ready for
+approval.** Existing content-bearing plan frames remain supported. The same
+projection works for revised Grok plans and Claude plan exits. Goal objective
+cleanup recognizes pasted Grok harness IDs and display names without stripping
+ordinary objectives that mention Grok Build.
+
 ---
 
 The mobile PWA is the supported mobile client for Agent Cockpit. It is a browser-based React app served by the same authenticated Node/Express server as the desktop web UI: open the self-hosted server URL on the phone, sign in with the existing web auth flow, and add the app to the home screen.
@@ -37,7 +57,8 @@ See [ADR-0025](adr/0025-use-mobile-pwa-as-sole-mobile-client.md).
 - `src/App.tsx` — mobile composition shell. It owns the API client refs, screen routing, dashboard/list state, active conversation/draft/interaction state, modal visibility, high-level conversation CRUD, `applyServerMessage`, `handleError`, notification dispatch, and cross-hook wiring, then composes focused screen modules and state-provider hooks instead of declaring stream, send, goal, attachment, explorer, queue-editor, session, or file-preview implementation bodies inline.
 - `src/mobileComponents.tsx` — stable re-export boundary for the mobile screens and modals consumed by `App.tsx`.
 - `src/mobileConversationListScreen.tsx` — conversation-list rendering, workspace filtering controls, live/goal row state, and conversation-card presentation.
-- `src/mobileChatScreen.tsx` — chat transcript rendering, composer shell, backend-neutral goal strip/event cards, assistant identity projection, message Markdown/file-card rendering, wrapped Markdown code-block copy controls, queue stack, usage meter, attachment tray, and interaction card.
+- `src/mobileChatScreen.tsx` — chat transcript rendering, composer shell, backend-neutral goal strip/event cards, assistant identity projection, message Markdown/file-card rendering, wrapped Markdown code-block copy controls, queue stack, usage meter, and attachment tray. It passes the conversation backend's plan-feedback support to the interaction card.
+- `src/interactionCard.tsx` — pending plan-approval and clarifying-question card. Plan cards send explicit `Approve & run` (`yes`) and `Reject` (`no`) decisions, matching desktop; only Grok plan cards add the `Plan revision feedback` textarea and `Request changes` button. Question cards keep option chips, free-text answers, and `Answer`.
 - `src/mobileModals.tsx` — stable re-export boundary for modal and secondary-screen modules.
 - `src/mobileConversationModals.tsx` — New Conversation/folder picker, conversation actions, Markdown sharing, and run settings sheets.
 - `src/mobileSessionScreens.tsx` — session list and read-only session viewer surfaces.
@@ -127,7 +148,7 @@ The PWA currently covers:
 - Stop stream via `POST /api/chat/conversations/:id/abort`.
 - WebSocket replay and live streaming for text, assistant messages, title updates, usage, errors, done, and replay start, with automatic active-stream polling/reconnect on mobile browser resume, network return, and transient socket errors.
 - Assistant message text, assistant content-block text, thinking blocks, and live streaming text render through `marked` with GitHub Flavored Markdown and hard line breaks enabled, then pass through DOMPurify before insertion. Assistant markdown prose uses the same General Sans body typography as the desktop web UI `.prose` treatment, while markdown headings keep the serif prose font. Fenced and indented Markdown code blocks render as bounded monospace panels with a language label, per-block **Copy** button, preserved line breaks, and long-line wrapping (`white-space: pre-wrap` plus break-word/anywhere wrapping) so CLI-supplied text does not create horizontal overflow on narrow screens. Thinking blocks render as full-width dashed Markdown panels rather than inline flex chips so multi-paragraph Claude Code reasoning keeps normal line flow on narrow mobile screens. Assistant/live CLI message headings use the message backend's metadata label and inline SVG icon from `GET /api/chat/backends`, falling back to the Agent Cockpit logo when no backend icon is available. System messages without `goalEvent`, including native-session recovery notices, use the Agent Cockpit logo and **Agent Cockpit** heading instead of the selected harness identity. User-authored message text remains plain text after uploaded-file marker stripping, preserving line breaks and avoiding accidental interpretation of user text as HTML/Markdown.
-- Plan approval and clarifying-question cards from `tool_activity` meta-events, answered through `POST /api/chat/conversations/:id/input`.
+- Plan approval and clarifying-question cards from `tool_activity` meta-events, answered through `POST /api/chat/conversations/:id/input`. Plan decisions come only from the explicit approve/reject buttons, so free text is never interpreted as approval; `useSendPipeline.submitInteraction(answer?)` sends a button's decision instead of the typed draft. It captures the submitted interaction object before awaiting the input response and uses a functional state update to clear only that same object after acknowledgement. A subsequent question or replacement plan received while the HTTP request is pending stays visible and answerable, even when questions reuse one native tool ID.
 - Browser Notification API prompts and hidden-tab notifications for stream done/error and interaction-needed events when permission is granted. This is not remote push.
 - Queue read/write/clear via `GET`, `PUT`, and `DELETE /api/chat/conversations/:id/queue`.
 - Queue auto-drain after clean `done` frames when no plan/question interaction is pending. The queue drainer sends the head without clearing the live composer draft/attachments; if the follow-up send is blocked by a still-active server stream or another send failure, the original queued item is restored at the queue head and persisted back to the server.
@@ -137,7 +158,7 @@ The PWA currently covers:
 - Image OCR insertion through `POST /api/chat/conversations/:id/attachments/ocr` with the selected `cliProfileId` and `backend`; the server rejects OCR when the selected profile/backend cannot transport one-shot image input or the selected/default model does not report `model.capabilities.input.image`. When OCR repairs a missing stored conversation profile to the selected profile, the response includes a persisted Agent Cockpit system `recoveryMessage`; the PWA applies it through the same server-message upsert path used by stream events before inserting the returned Markdown into the draft.
 - Send/queue wire-content composition by appending `[Uploaded files: <paths>]`.
 - User-message uploaded-file marker stripping and file card rendering.
-- Assistant `<!-- FILE_DELIVERY:/absolute/path -->` marker stripping and file card rendering. Delivered files use `GET /api/chat/conversations/:id/workspace-file` for previews/downloads so worktree-isolated conversations read from their execution checkout instead of the canonical base checkout.
+- Assistant `<!-- FILE_DELIVERY:/absolute/path -->` marker stripping and file card rendering. Only assistant markers create delivered-file references; a marker quoted in a user prompt does not advertise a file before the harness creates it. Delivered files use `GET /api/chat/conversations/:id/workspace-file` for previews/downloads so worktree-isolated conversations read from their execution checkout instead of the canonical base checkout.
 - Assistant Markdown links that point at `data/chat/workspaces/<storageKey>/workspace-context/context/*.md` are intercepted in the mobile transcript and opened as file-preview references through `GET /api/chat/conversations/:id/workspace-context-file`; the server validates that the file belongs to the active conversation workspace. Preview sheets render `language:"markdown"` / `.md` responses as sanitized Markdown instead of raw code text.
 - Assistant generated-artifact `contentBlocks` render as the same file cards/image previews, backed by `GET /api/chat/conversations/:id/files/:filename`.
 - Text previews, markdown previews, image previews, file downloads, and Web Share API / fallback download for delivered files. File-preview references created from conversation responses preserve `executionDir` and `checkout` on list items even though the UI still groups workspaces by canonical `workingDir`/`workspaceId`. File-preview sheets use the shared modal header: the title/subtitle column may shrink and truncates long filenames or paths, while the `Close` button stays visible as a fixed trailing control.

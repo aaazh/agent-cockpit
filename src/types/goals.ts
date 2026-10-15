@@ -1,6 +1,6 @@
 // ── Thread Goal Types ────────────────────────────────────────────────
 
-export type ThreadGoalBackend = 'codex' | 'claude-code' | 'claude-code-interactive';
+export type ThreadGoalBackend = 'codex' | 'claude-code' | 'claude-code-interactive' | 'grok-build';
 
 export type ThreadGoalStatus = 'active' | 'paused' | 'budgetLimited' | 'complete' | 'cleared' | 'unknown';
 

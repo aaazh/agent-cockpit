@@ -364,15 +364,16 @@ export function useSendPipeline(options: UseSendPipelineOptions) {
     }
   }
 
-  async function submitInteraction() {
+  async function submitInteraction(answerOverride?: string) {
     const conversation = options.activeConversation;
-    const answer = options.interactionAnswer.trim();
-    if (!conversation || !options.pendingInteraction || !answer) {
+    const interaction = options.pendingInteraction;
+    const answer = (answerOverride ?? options.interactionAnswer).trim();
+    if (!conversation || !interaction || !answer) {
       return;
     }
     try {
       const response = await options.clientRef.current.sendInput(conversation.id, answer, options.isStreaming || options.loading);
-      options.setPendingInteraction(null);
+      options.setPendingInteraction((current) => current === interaction ? null : current);
       options.setInteractionAnswer('');
       if (response.mode === 'message') {
         await sendMessageNow({ content: answer });

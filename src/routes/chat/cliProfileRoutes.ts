@@ -7,6 +7,8 @@ import { validateCliProfileDraftRequest } from '../../contracts/chat';
 import { backendForCliProfile, cliProtocolForBackend, cliHarnessForBackend } from '../../services/cliProfiles';
 import type { CliProfile, CliHarness, Request, Response, Settings } from '../../types';
 import { isCliProfileResolutionError, param, sendError } from './routeUtils';
+import { GrokBillingCache } from '../../services/backends/grokBilling';
+import type { GrokBillingResponse } from '../../contracts/grokBilling';
 
 export interface CliProfileRoutesOptions {
   chatService: ChatService;
@@ -17,6 +19,20 @@ export interface CliProfileRoutesOptions {
 export function createCliProfileRouter(opts: CliProfileRoutesOptions): express.Router {
   const { chatService, backendRegistry, cliProfileAuth } = opts;
   const router = express.Router();
+  const grokBilling = new GrokBillingCache();
+
+  router.get('/cli-profiles/:profileId/grok-billing', async (req: Request, res: Response) => {
+    try {
+      const profileId = param(req, 'profileId');
+      const runtime = await chatService.resolveCliProfileRuntime(profileId);
+      if (runtime.backendId !== 'grok-build') return res.status(400).json({ error: 'Grok billing requires a Grok Build profile' });
+      const billing = await grokBilling.get(runtime.profile);
+      const response: GrokBillingResponse = { profileId: runtime.cliProfileId || profileId, billing };
+      res.json(response);
+    } catch (error) {
+      sendError(res, isCliProfileResolutionError(error) ? 400 : 503, error);
+    }
+  });
 
   router.get('/cli-profiles/:profileId/metadata', async (req: Request, res: Response) => {
     try {
@@ -210,16 +226,16 @@ function prepareProfileForTest(
 ): { settings: Settings; profile: CliProfile; changed: boolean } {
   const profile = settings.cliProfiles?.find(candidate => candidate.id === profileId);
   if (!profile) throw new Error(`CLI profile not found: ${profileId}`);
-  if (profile.authMode === 'account' && (profile.harness === 'codex' || profile.harness === 'claude-code')) {
+  if (profile.authMode === 'account' && (profile.harness === 'codex' || profile.harness === 'claude-code' || profile.harness === 'grok-build')) {
     return cliProfileAuth.profileWithAuthDefaults(settings, profileId);
   }
   return { settings, profile, changed: false };
 }
 
-type SetupAuthHarness = Extract<CliHarness, 'codex' | 'claude-code'>;
+type SetupAuthHarness = Extract<CliHarness, 'codex' | 'claude-code' | 'grok-build'>;
 
 function setupAuthHarness(value: string): SetupAuthHarness {
-  if (value === 'codex' || value === 'claude-code') return value;
+  if (value === 'codex' || value === 'claude-code' || value === 'grok-build') return value;
   if (value === 'kiro') throw new Error('Remote authentication is not supported for Kiro profiles yet.');
   throw new Error(`Unsupported setup authentication harness: ${value}`);
 }
@@ -265,7 +281,7 @@ function setupAuthProfile(settings: Settings, harness: SetupAuthHarness): { sett
   const now = new Date().toISOString();
   const profile: CliProfile = {
     id: uniqueSetupProfileId(profiles, `setup-${harness}-account`),
-    name: harness === 'codex' ? 'Codex Account' : 'Claude Code Account',
+    name: harness === 'codex' ? 'Codex Account' : harness === 'grok-build' ? 'Grok Build Account' : 'Claude Code Account',
     harness,
     authMode: 'account',
     createdAt: now,
@@ -328,7 +344,7 @@ function setupProfileWithoutAuthHome(profile: CliProfile, harness: SetupAuthHarn
 
 function hasSetupAuthHome(profile: CliProfile, harness: SetupAuthHarness): boolean {
   if (profile.configDir) return true;
-  const key = harness === 'claude-code' ? 'CLAUDE_CONFIG_DIR' : 'CODEX_HOME';
+  const key = harness === 'claude-code' ? 'CLAUDE_CONFIG_DIR' : harness === 'grok-build' ? 'GROK_HOME' : 'CODEX_HOME';
   return Boolean(Object.entries(profile.env || {}).some(([name, value]) =>
     name.toUpperCase() === key && String(value || '').trim().length > 0,
   ));
@@ -339,7 +355,7 @@ function stripSetupAuthHomeEnv(
   env: Record<string, string> | undefined,
 ): Record<string, string> | undefined {
   if (!env) return env;
-  const key = harness === 'claude-code' ? 'CLAUDE_CONFIG_DIR' : 'CODEX_HOME';
+  const key = harness === 'claude-code' ? 'CLAUDE_CONFIG_DIR' : harness === 'grok-build' ? 'GROK_HOME' : 'CODEX_HOME';
   const stripped: Record<string, string> = {};
   let changed = false;
   for (const [name, value] of Object.entries(env)) {

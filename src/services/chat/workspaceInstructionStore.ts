@@ -36,6 +36,7 @@ const INSTRUCTION_HARNESS_LABELS: Record<CliHarness, string> = {
   kiro: 'Kiro',
   codex: 'Codex',
   opencode: 'OpenCode',
+  'grok-build': 'Grok Build',
 };
 
 const HARNESS_INSTRUCTION_SOURCE: Record<CliHarness, WorkspaceInstructionSourceId> = {
@@ -43,6 +44,7 @@ const HARNESS_INSTRUCTION_SOURCE: Record<CliHarness, WorkspaceInstructionSourceI
   'claude-code': 'claude',
   kiro: 'kiro',
   opencode: 'agents',
+  'grok-build': 'agents',
 };
 
 function relPath(absPath: string, workspacePath: string): string {

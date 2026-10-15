@@ -62,4 +62,25 @@ describe('profile-aware plan usage stores', () => {
       (window as any).AgentApi.getCodexPlanUsage,
     );
   });
+
+  test('Grok coalesces requests per profile and clears unavailable billing', async () => {
+    const fetch = jest.fn(async (url: string) => ({ ok: true, json: async () => ({ billing: { profile: url } }) }));
+    (window as any).AgentApi.fetch = fetch;
+    const store = loadStore<any>('../web/AgentCockpitWeb/src/grokPlanUsageStore.js', 'GrokPlanUsageStore');
+    const seen: unknown[] = [];
+    const unsubscribe = store.subscribe((data: unknown) => seen.push(data), 'profile-a');
+    const first = store.refresh('profile-a');
+    expect(store.refresh('profile-a')).toBe(first);
+    await first;
+    await store.refresh('profile-b');
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(store.get('profile-a')).toEqual({ profile: 'cli-profiles/profile-a/grok-billing' });
+    expect(store.get('profile-b')).toEqual({ profile: 'cli-profiles/profile-b/grok-billing' });
+    fetch.mockRejectedValueOnce(new Error('unavailable'));
+    await store.refresh('profile-a');
+    expect(store.get('profile-a')).toBeNull();
+    expect(seen.at(-1)).toBeNull();
+    expect(store.get('profile-b')).not.toBeNull();
+    unsubscribe();
+  });
 });

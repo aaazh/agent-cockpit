@@ -2,6 +2,21 @@
 
 [← Back to index](SPEC.md)
 
+Grok Build supervised runtimes inherit host/profile env with `GROK_HOME` mapped
+from an explicit account `configDir`, while Welcome setup profiles remove that
+override to share terminal auth. They force automatic updates, prompt
+suggestions, native turn summaries, and native memory off; never change `HOME`
+for isolation. Cached ACP authentication does not initiate login. Explicit
+device-auth jobs use `grok login --device-auth`, redact output including xAI
+keys, and verify access gates before success. The authenticated read-only
+`GET /api/chat/cli-profiles/:profileId/grok-billing` reads cached native account
+metadata with no inference. Restricted processor calls verify zero tool
+definitions before inference, attach no MCP servers, reject reverse/tool
+requests, and treat slash commands as text. POSIX teardown tracks descendant
+PID/start identities because native shells use detached process groups;
+Windows uses hidden launches and tree termination. Details and observation
+limits are in [Grok Build](spec-grok-build.md).
+
 ---
 
 ## 6.1 Configuration
@@ -75,7 +90,7 @@ restart/import retry loop.
 8. Parse JSON bodies with `express.json()`
 9. Mount CSRF token endpoint at `GET /api/csrf-token`
 9a. Mount current-user endpoint at `GET /api/me`
-10. Create BackendRegistry, register ClaudeCodeAdapter, KiroAdapter, and CodexAdapter
+10. Create BackendRegistry, register ClaudeCodeAdapter, KiroAdapter, CodexAdapter, OpenCodeAdapter, and GrokBuildAdapter
 11. Initialize ChatService
 12. Initialize InstallStateService, UpdateService, InstallDoctorService, CliUpdateService, DataMigrationService, Claude/Kiro/Codex plan usage services, `WebBuildService`, `MobileBuildService`, and the chat router dependencies, including the Claude Code Interactive adapter registration
 13. Mount chat router at `/api/chat`
@@ -181,7 +196,7 @@ Re-entrancy is guarded by a `reAuthInFlightRef` — overlapping 401s on concurre
 - `GET /api/csrf-token`: returns `{ csrfToken }` from session
 - `GET /api/me`: returns `{ displayName, email, provider }` (all nullable) from `req.user`. Same auth gating as other `/api/*` routes.
 
-CLI profile status/auth endpoints that spawn local CLI processes are CSRF-protected (`POST /api/chat/cli-profiles/:id/test`, `POST /api/chat/cli-profiles/:id/auth/start`, OpenCode draft metadata/check routes, and auth-job cancel). Auth jobs only accept saved Codex/Claude Code account profiles, run with that profile's command/env/config directory, and redact common bearer/access/refresh/API-key patterns from stdout/stderr before exposing job events to the browser. Status checks also support saved and draft self-configured OpenCode profiles by running `opencode --version`; they report availability without claiming Cockpit-managed authentication, normalize draft profiles to provider-only self-configured shape, and do not create a profile auth directory. Kiro remote auth/status is intentionally blocked while Kiro lacks a safe dedicated config-home override.
+CLI profile status/auth endpoints that spawn local CLI processes are CSRF-protected (`POST /api/chat/cli-profiles/:id/test`, `POST /api/chat/cli-profiles/:id/auth/start`, OpenCode draft metadata/check routes, and auth-job cancel). Auth jobs only accept saved Codex/Claude Code/Grok Build account profiles, run with that profile's command/env/config directory, and redact common bearer/access/refresh/API-key patterns from stdout/stderr before exposing job events to the browser. Status checks also support saved and draft self-configured OpenCode profiles by running `opencode --version`; they report availability without claiming Cockpit-managed authentication, normalize draft profiles to provider-only self-configured shape, and do not create a profile auth directory. Kiro remote auth/status is intentionally blocked while Kiro lacks a safe dedicated config-home override.
 
 ## 6.5 Security Headers
 

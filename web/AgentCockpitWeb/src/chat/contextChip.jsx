@@ -4,6 +4,7 @@ import { getChipRenderer } from '../chip-renderers.jsx';
 import { PlanUsageStore } from '../planUsageStore.js';
 import { KiroPlanUsageStore } from '../kiroPlanUsageStore.js';
 import { CodexPlanUsageStore } from '../codexPlanUsageStore.js';
+import { GrokPlanUsageStore } from '../grokPlanUsageStore.js';
 import { Tip } from '../tooltip.jsx';
 import { CLAUDE_CODE_INTERACTIVE_BACKEND_ID } from './chatHelpers.js';
 
@@ -22,6 +23,7 @@ export function ContextChip({ backendId, cliProfileId, cliProfile, usage }){
   const store = shouldShowClaudePlanUsage(backendId, cliProfile) ? PlanUsageStore
     : backendId === 'kiro'        ? KiroPlanUsageStore
     : backendId === 'codex'       ? CodexPlanUsageStore
+    : backendId === 'grok-build'  ? GrokPlanUsageStore
     : null;
   const profileKey = cliProfileId || '';
   const [planUsageState, setPlanUsageState] = React.useState(() => ({

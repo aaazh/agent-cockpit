@@ -1,0 +1,79 @@
+/** @jest-environment jsdom */
+import { act, createElement, useState, type Dispatch, type SetStateAction } from 'react';
+import { createRoot } from 'react-dom/client';
+import { loadMobileModule } from './mobileModuleLoader';
+
+type PendingInteraction = { kind: 'question' | 'plan'; prompt: string; options?: unknown[] };
+
+const { useSendPipeline } = loadMobileModule('useSendPipeline.ts', {
+  react: require('react'), './api': {}, './appModel': {},
+});
+
+async function renderPipeline(first: PendingInteraction, sendInput: jest.Mock) {
+  (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+  const container = document.createElement('div');
+  const root = createRoot(container);
+  let current!: {
+    interaction: PendingInteraction | null;
+    setInteraction: Dispatch<SetStateAction<PendingInteraction | null>>;
+    submitInteraction: (answer?: string) => Promise<void>;
+  };
+  const onError = jest.fn();
+  function Harness() {
+    const [interaction, setInteraction] = useState<PendingInteraction | null>(first);
+    const [answer, setAnswer] = useState('Blue');
+    const pipeline = useSendPipeline({
+      activeConversation: { id: 'fixture' }, pendingInteraction: interaction, interactionAnswer: answer,
+      isStreaming: true, loading: false, clientRef: { current: { sendInput } },
+      setPendingInteraction: setInteraction, setInteractionAnswer: setAnswer, onError,
+    });
+    current = { interaction, setInteraction, submitInteraction: pipeline.submitInteraction };
+    return createElement('p', null, interaction?.prompt);
+  }
+  await act(async () => { root.render(createElement(Harness)); });
+  return {
+    get current() { return current; }, container, onError,
+    close: async () => { await act(async () => { root.unmount(); }); },
+  };
+}
+
+const question: PendingInteraction = { kind: 'question', prompt: 'Color?', options: [] };
+test.each<{ first: PendingInteraction; next: PendingInteraction }>([
+  { first: question, next: { kind: 'question', prompt: 'Size?', options: [] } },
+  { first: { kind: 'plan', prompt: '# Original plan' }, next: { kind: 'plan', prompt: '# Revised plan' } },
+])('mobile preserves a follow-up $next.kind received before the input response', async ({ first, next }) => {
+  let acknowledge!: (response: { mode: string }) => void;
+  const sendInput = jest.fn(() => new Promise(resolve => { acknowledge = resolve; }));
+  const view = await renderPipeline(first, sendInput);
+  try {
+    let answering!: Promise<void>;
+    await act(async () => { answering = view.current.submitInteraction(); });
+    await act(async () => { view.current.setInteraction(next); });
+    await act(async () => { acknowledge({ mode: 'stdin' }); await answering; });
+    expect(view.current.interaction).toBe(next);
+    expect(view.container.textContent).toBe(next.prompt);
+    expect(sendInput).toHaveBeenCalledWith('fixture', 'Blue', true);
+    sendInput.mockResolvedValueOnce({ mode: 'stdin' });
+    await act(async () => { await view.current.submitInteraction('Large'); });
+    expect(sendInput).toHaveBeenCalledTimes(2);
+    expect(view.current.interaction).toBeNull();
+  } finally { await view.close(); }
+});
+
+test('mobile clears the answered interaction after a successful input response', async () => {
+  const view = await renderPipeline(question, jest.fn().mockResolvedValue({ mode: 'stdin' }));
+  try {
+    await act(async () => { await view.current.submitInteraction(); });
+    expect(view.current.interaction).toBeNull();
+  } finally { await view.close(); }
+});
+
+test('mobile keeps the interaction available when input delivery fails', async () => {
+  const error = new Error('Input unavailable');
+  const view = await renderPipeline(question, jest.fn().mockRejectedValue(error));
+  try {
+    await act(async () => { await view.current.submitInteraction(); });
+    expect(view.current.interaction).toBe(question);
+    expect(view.onError).toHaveBeenCalledWith(error);
+  } finally { await view.close(); }
+});
