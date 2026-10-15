@@ -34,6 +34,7 @@ least one of these should be installed and authenticated:
 | OpenAI Codex | `codex` |
 | Kiro | `kiro-cli` |
 | OpenCode | `opencode` |
+| Grok Build | `grok` |
 
 See [Supported Backends](backends.md) for setup notes and feature differences.
 

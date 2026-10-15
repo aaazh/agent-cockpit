@@ -100,6 +100,12 @@ describe('Windows installer script', () => {
     expect(source).toContain('SET "NODE_EXE=$NodeExe"');
     expect(source).toContain('& `$node `$target @args');
     expect(source).toContain("Write-TextFile (Join-Path $cliToolsDir 'claude.ps1')");
+    expect(source).toContain("$grokJs = Join-Path $cliToolsDir 'node_modules\\@xai-official\\grok\\bin\\grok'");
+    expect(source).toContain("Write-TextFile (Join-Path $cliToolsDir 'grok.ps1')");
+    expect(source).toContain("Write-TextFile (Join-Path $cliToolsDir 'grok.cmd')");
+    expect(source).toContain('SET "GROK_JS=$grokJs"');
+    expect(source).toContain('"%NODE_EXE%" "%GROK_JS%" %*');
+    expect(source).toContain('Grok Build CLI package entrypoint was not found. Reinstall Grok Build from Agent Cockpit.');
     expect(source).toContain('Repaired Windows CLI wrapper(s)');
     expect(source).toContain('Repair-CliToolWrappers');
     expect(source).toContain("Join-Path $env:APPDATA 'npm'");

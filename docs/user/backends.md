@@ -90,11 +90,22 @@ npm install -g @xai-official/grok
 grok login
 ```
 
+The native installer from the [Grok Build docs](https://docs.x.ai/build/overview)
+also works. Agent Cockpit finds `~/.grok/bin/grok` even when it is not on the
+server `PATH`, and the CLI updates list in Settings → CLI Profiles updates that
+install with `grok update`.
+
 Select **Grok Build** in Settings → CLI Profiles → Harness. A self-configured
 profile reuses your existing terminal authentication. Welcome can check that
 login or start `grok login --device-auth`; its setup profile also shares your
 normal `~/.grok` login. Explicit account profiles can use a separate config
 directory mapped to `GROK_HOME`.
+
+To use an xAI API key instead of a login, add `XAI_API_KEY` to an account
+profile's environment overrides. A cached login in that profile's Grok home
+takes precedence over the key. **Check CLI** can only report the key as
+configured because Agent Cockpit does not spend a paid request to test it; the
+first real request shows whether the key works.
 
 Grok supports thinking, tools, grouped subagents, questions, plan approval,
 mid-turn input, native goal controls, and later session recovery. Goal token
@@ -105,7 +116,8 @@ memory is disabled in Cockpit sessions; use Cockpit Memory and Workspace Context
 An interrupted active turn is not automatically reattached or replayed.
 
 Compatibility is verified with Grok Build 1.0.52 on macOS arm64. Native Windows
-and Linux compatibility still needs platform validation.
+and Linux compatibility, and authorization with a real valid API key, still need
+validation.
 
 ## Backend Switching
 

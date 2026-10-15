@@ -501,6 +501,47 @@ EXIT /B %ERRORLEVEL%
     $updated += 'claude'
   }
 
+  $grokJs = Join-Path $cliToolsDir 'node_modules\@xai-official\grok\bin\grok'
+  if (Test-Path $grokJs) {
+    $grokPs1 = @"
+`$ErrorActionPreference = "Stop"
+`$node = $(Ps-SingleQuote $NodeExe)
+`$target = $(Ps-SingleQuote $grokJs)
+if (-not (Test-Path -LiteralPath `$node)) {
+  Write-Error "Agent Cockpit private Node.js runtime was not found. Rerun the Agent Cockpit installer or self-update."
+  exit 1
+}
+if (-not (Test-Path -LiteralPath `$target)) {
+  Write-Error "Grok Build CLI package entrypoint was not found. Reinstall Grok Build from Agent Cockpit."
+  exit 1
+}
+`$nodeDir = Split-Path -Parent `$node
+`$env:PATH = "`$nodeDir;`$env:PATH"
+& `$node `$target @args
+exit `$LASTEXITCODE
+"@
+    $grokCmd = @"
+@ECHO off
+SETLOCAL
+SET "NODE_EXE=$NodeExe"
+SET "GROK_JS=$grokJs"
+IF NOT EXIST "%NODE_EXE%" (
+  ECHO Agent Cockpit private Node.js runtime was not found. Rerun the Agent Cockpit installer or self-update. 1>&2
+  EXIT /B 1
+)
+IF NOT EXIST "%GROK_JS%" (
+  ECHO Grok Build CLI package entrypoint was not found. Reinstall Grok Build from Agent Cockpit. 1>&2
+  EXIT /B 1
+)
+FOR %%I IN ("%NODE_EXE%") DO SET "PATH=%%~dpI;%PATH%"
+"%NODE_EXE%" "%GROK_JS%" %*
+EXIT /B %ERRORLEVEL%
+"@
+    Write-TextFile (Join-Path $cliToolsDir 'grok.ps1') ($grokPs1 + [Environment]::NewLine)
+    Write-TextFile (Join-Path $cliToolsDir 'grok.cmd') ($grokCmd + [Environment]::NewLine)
+    $updated += 'grok'
+  }
+
   if ($updated.Count -gt 0) {
     Write-Log "Repaired Windows CLI wrapper(s): $($updated -join ', ')."
   }

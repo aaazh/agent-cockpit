@@ -1549,8 +1549,12 @@ Required checks currently cover Node.js 22+, npm, local PM2, writable
 `<AGENT_COCKPIT_DATA_DIR>`, and the desktop V2 build shell at
 `public/v2-built/index.html`. Optional/warning checks cover app-directory
 writability for future updates, platform user-session startup registration,
-the mobile PWA build shell, Claude Code CLI, Codex CLI, Kiro CLI, Pandoc,
-LibreOffice, and install/update channel metadata. Windows PM2 probes run
+the mobile PWA build shell, Claude Code CLI, Codex CLI, Kiro CLI, Grok Build
+CLI, Pandoc, LibreOffice, and install/update channel metadata. The Grok Build
+probe resolves `grok` through `resolveGrokCliRuntime()` and runs
+`grok --no-auto-update --version`, so native installs under `~/.grok/bin`
+(`%USERPROFILE%\.grok\bin\grok.exe` on Windows) are detected without a `PATH`
+entry. Windows PM2 probes run
 `node.exe <activeAppDir>\node_modules\pm2\bin\pm2 --version` directly, preferring
 the installer-recorded runtime and `install.appDir`, so the welcome screen does
 not trigger npm package-resolution prompts; non-Windows PM2 probes continue to
@@ -1561,10 +1565,10 @@ runtime, so Windows private-Node installs do not depend on the inherited process
 CLI JavaScript entrypoints, Install Doctor uses
 `node.exe node_modules/npm/bin/npm-cli.js` for npm probes and npm-backed install
 actions. That avoids `npm.cmd` shim quoting entirely for the installer-managed
-path. Windows Claude/Codex welcome actions run npm with
+path. Windows Claude/Codex/Grok Build welcome actions run npm with
 `--prefix <installDir>\cli-tools` so the CLIs land in an Agent Cockpit-owned
 per-user prefix instead of depending on npm's global Windows prefix. After a
-successful Claude/Codex install action, the service prepends
+successful Claude/Codex/Grok Build install action, the service prepends
 `<installDir>\cli-tools` to the current server `PATH`, persists the same entry
 to the current user's Windows `Path`, repairs Agent Cockpit-managed terminal
 wrappers, and broadcasts an environment change before returning the refreshed
@@ -1574,6 +1578,8 @@ wrappers, refreshes detection, and can return success with the failed PATH step
 captured in `steps[]`. The repaired `codex.ps1`/`codex.cmd` wrappers call the
 recorded private `node.exe` plus the installed `codex.js` entrypoint directly,
 so a user does not need a separate global Node install for terminal `codex` to start.
+The repaired `grok.ps1`/`grok.cmd` wrappers likewise call the private `node.exe`
+plus the installed `@xai-official\grok\bin\grok` entrypoint.
 That makes immediate authentication/profile checks work and makes
 `claude`/`codex` available to new PowerShell or terminal sessions. Windows
 Claude/Codex probes share the backend resolver:
@@ -1595,7 +1601,9 @@ disabled startup state is reported as intentional. Missing CLI warnings are
 optional and tell the user to
 install only the backend they plan to use; Claude Code remediation includes
 `npm i -g @anthropic-ai/claude-code`, Codex remediation includes
-`npm i -g @openai/codex`, and Kiro remediation uses the official docs on
+`npm i -g @openai/codex`, Grok Build remediation includes
+`npm i -g @xai-official/grok` followed by `grok login --device-auth`, and Kiro
+remediation uses the official docs on
 Windows while retaining the official shell installer action on POSIX. Pandoc and
 LibreOffice warnings are platform-aware: macOS mentions Homebrew only as an
 already-installed option and Windows points at the official Windows
@@ -1620,6 +1628,9 @@ actions are:
   (Windows adds `--prefix <installDir>\cli-tools` and uses the installer
   private runtime's npm CLI when available)
 - `codex-cli:npm-install` -> `npm i -g @openai/codex@latest`
+  (Windows adds `--prefix <installDir>\cli-tools` and uses the installer
+  private runtime's npm CLI when available)
+- `grok-cli:npm-install` -> `npm i -g @xai-official/grok@latest`
   (Windows adds `--prefix <installDir>\cli-tools` and uses the installer
   private runtime's npm CLI when available)
 - `kiro-cli:official-install` -> `sh -c "curl -fsSL https://cli.kiro.dev/install | bash"`, exposed only outside Windows
@@ -1685,7 +1696,7 @@ On Windows the command uses `npm.cmd` and the inherited `WebBuildService` `.cmd`
 
 **File:** `src/services/cliUpdateService.ts`
 
-`CliUpdateService` detects and updates the local backend CLIs that Agent Cockpit can spawn through configured CLI profiles. It is deliberately separate from `UpdateService`: `UpdateService` updates Agent Cockpit itself, while this service updates harness CLI binaries such as Codex, Claude Code, Kiro, and OpenCode.
+`CliUpdateService` detects and updates the local backend CLIs that Agent Cockpit can spawn through configured CLI profiles. It is deliberately separate from `UpdateService`: `UpdateService` updates Agent Cockpit itself, while this service updates harness CLI binaries such as Codex, Claude Code, Kiro, OpenCode, and Grok Build.
 
 **Lifecycle:**
 - `server.ts` constructs `new CliUpdateService(__dirname)` next to `UpdateService`, passes it into `createChatRouter`, and starts it after `chatService.initialize()` with `cliUpdateService.start(() => chatService.getSettings())`.
@@ -1698,15 +1709,17 @@ On Windows the command uses `npm.cmd` and the inherited `WebBuildService` `.cmd`
 - Codex profiles resolve through `resolveCodexCliRuntime(profile)` so `command`, merged `env`, and `CODEX_HOME` are honored. On Windows, installer-managed Codex resolves to `node.exe <installDir>\cli-tools\node_modules\@openai\codex\bin\codex.js`; package entrypoints beside PATH-visible npm shims are preferred before `codex.cmd`.
 - Claude Code profiles resolve through `resolveClaudeCliRuntime(profile)` so `command`, merged `env`, and `CLAUDE_CONFIG_DIR` are honored. On Windows, installer-managed Claude resolves to the package `claude.exe`; package entrypoints beside PATH-visible npm shims are preferred before `claude.cmd`.
 - OpenCode profiles resolve through `resolveOpenCodeCliRuntime(profile)` so `command` and merged `env` are honored. On macOS/Linux, the resolver checks `~/.opencode/bin/opencode` after PATH/common user-local bins.
+- Grok Build profiles resolve through `resolveGrokCliRuntime(profile)` so `command` and merged `env` are honored, but the update target replaces any profile `GROK_HOME` (from `configDir` or env) with the host `GROK_HOME`, or removes it, because the npm/native updater installs the shared executable rather than account credentials. On macOS/Linux, the resolver checks host `GROK_HOME/bin/grok` and `~/.grok/bin/grok` after PATH/common user-local bins. On Windows it prefers a native `grok.exe` under host `GROK_HOME\bin` or `%USERPROFILE%\.grok\bin`, then `node.exe <prefix>\node_modules\@xai-official\grok\bin\grok`, before `.exe`/`.cmd` fallbacks.
 - Kiro uses the server-configured `kiro-cli` runtime because Kiro profiles do not expose profile-local command/config/env overrides.
 
 **Status checks:**
-- Runs the harness version command (`codex --version`, `claude --version`, `opencode --version`, `kiro-cli version`) and extracts the first semver-looking value.
+- Runs the harness version command (`codex --version`, `claude --version`, `opencode --version`, `grok --version`, `kiro-cli version`) and extracts the first semver-looking value.
 - Resolves the command path using `which` (`where` on Windows), or by checking an explicit path command directly.
-- For Codex and Claude Code, calls `npm root -g` and realpath-checks whether the resolved command lives under the expected global package directory (`@openai/codex` or `@anthropic-ai/claude-code`). Only then is the install method marked `npm-global`.
+- For Codex, Claude Code, and Grok Build, calls `npm root -g` and realpath-checks whether the resolved command lives under the expected global package directory (`@openai/codex`, `@anthropic-ai/claude-code`, or `@xai-official/grok`). Only then is the install method marked `npm-global`. On Windows, a Grok Build package under the Agent Cockpit-managed `cli-tools` prefix is marked `npm-global` with that prefix directly.
 - For npm-global installs, calls `npm view <package> version` and compares three-part semver numerically.
 - Kiro and OpenCode are marked `self-update` with update commands, but there is no latest-version source in the current service, so `updateAvailable` remains false unless a future detector adds one.
-- Missing/unknown/native installs remain visible in Settings with `lastError`, but they are not actionable from the composer notification.
+- Grok Build installs that are not npm-managed, such as the official native installer's `~/.grok/bin/grok`, are also `self-update`, but their latest version comes from `grok --no-auto-update update --check --json` (`latestVersion`; a non-null `error` fails the check), so background checks can raise `updateAvailable` and the composer notification.
+- Missing/unknown/native installs (other than Grok Build's self-updating native install) remain visible in Settings with `lastError`, but they are not actionable from the composer notification.
 - Claude Code targets also attach `interactiveCompatibility` for `claude-code-interactive` by comparing the installed Claude CLI version with the adapter's tested version (`2.1.172` at this release). Newer installed versions warn that Interactive mode may still work but can have compatibility issues, that Standard mode remains fully supported, and link to Anthropic's Claude Agent SDK plan-usage support article. Older versions warn that expected transcript fields may be missing. If the latest available npm version is newer than the tested version, the row also carries `updateCaution` so the web UI can warn before updating the shared Claude binary. These warnings never create a second physical update target and do not block the standard Claude Code updater. The separate `scripts/check-claude-interactive-release.js` GitHub Actions helper reads the same tested-version constant, ensures there is at most one open support-validation issue for the latest newer npm version, locally ignores closed or unrecognized GitHub search results, and closes lower-version open support-validation issues after the latest-version issue exists.
 
 **Update path:**
@@ -1714,13 +1727,15 @@ On Windows the command uses `npm.cmd` and the inherited `WebBuildService` `.cmd`
 - Supported commands are:
   - Codex npm-global: `npm i -g @openai/codex@latest`
   - Claude Code npm-global: `npm i -g @anthropic-ai/claude-code@latest`
+  - Grok Build npm-global: `npm i -g @xai-official/grok@latest`
   - Kiro self-update: `<kiro command> update --non-interactive`
   - OpenCode self-update: `<opencode command> upgrade`
+  - Grok Build self-update: `<grok command> update`
 - Each command runs through `execFile` with the target profile env, a 120-second timeout, and capped output.
 - When the updated Windows target is the Agent Cockpit-managed
   `<installDir>\cli-tools` prefix, the service repairs the terminal wrapper
-  after npm completes so `codex.ps1`/`codex.cmd` keep calling the private
-  `node.exe` rather than npm's default global-Node shim.
+  after npm completes so `codex.ps1`/`codex.cmd` and `grok.ps1`/`grok.cmd` keep
+  calling the private `node.exe` rather than npm's default global-Node shim.
 - On success the route-level caller invokes `backendRegistry.shutdownAll()` so long-lived backend child processes restart on next use with the updated executable.
 - After the update command, the service re-probes the target and returns `{ success: true, steps, item }`. Failures return `{ success: false, steps, error, item? }` without mutating unrelated status items.
 

@@ -17,6 +17,8 @@ Use the mobile PWA to:
 
 - monitor active conversations;
 - answer interactive questions;
+- approve or reject plans with explicit buttons (Grok Build plans also accept
+  revision feedback);
 - review running-state badges;
 - steer work while away from the desktop browser.
 

@@ -484,8 +484,8 @@ with `<install-root>\cli-tools` first, the private runtime directory second when
 present, `%APPDATA%\npm` when available, and then the inherited user PATH. The
 installer creates `<install-root>\cli-tools`, prepends it to the current user's
 Windows `Path`, and broadcasts an environment change so new user terminals can
-run CLIs that Agent Cockpit installs there. Welcome-screen Claude/Codex npm
-actions and Windows production self-updates also persist the same user `Path`
+run CLIs that Agent Cockpit installs there. Welcome-screen Claude/Codex/Grok
+Build npm actions and Windows production self-updates also persist the same user `Path`
 entry after successful installs/updates. Installer repair reruns also inspect
 existing packages under this prefix and repair stale npm-generated wrappers.
 When Agent Cockpit installs or updates Codex under this prefix with a private
@@ -494,15 +494,20 @@ Node runtime, it repairs the terminal
 explicitly; users do not need a separate global Node install for terminal
 `codex` to start. The same repair path rewrites the Agent Cockpit-managed
 Claude wrapper to call the installed `claude.exe` directly when that package is
-present. On Windows the server-side CLI resolver prefers the package entrypoints npm puts
+present. Installer repair reruns, Install Doctor actions, Windows production
+self-updates, and CLI updates also rewrite Grok Build's `grok.ps1`/`grok.cmd`
+wrappers to call the private `node.exe` plus `@xai-official\grok\bin\grok` when
+that package is present. On Windows the server-side CLI resolver prefers the package entrypoints npm puts
 under that prefix (`@anthropic-ai\claude-code\bin\claude.exe` directly and
 `@openai\codex\bin\codex.js` through `node.exe`) before falling back to npm
-`.cmd` shims through `cmd.exe`. It also inspects PATH directories for the same
+`.cmd` shims through `cmd.exe`. Grok Build first prefers a native `grok.exe`
+under host `GROK_HOME\bin` or `%USERPROFILE%\.grok\bin`, then
+`@xai-official\grok\bin\grok` through `node.exe`. It also inspects PATH directories for the same
 package entrypoint layout beside a PATH-visible npm shim, so a global npm
 install rooted at `C:\Program Files\nodejs` can launch the real package target
 instead of `claude.cmd`/`codex.cmd`; PATH-visible `.exe`/`.cmd` commands remain
-the final self-installed fallback. Claude/Codex chat, auth, doctor, usage, and
-CLI update flows use that shared resolution path. Windows
+the final self-installed fallback. Claude/Codex/Grok Build chat, auth, doctor,
+usage, and CLI update flows use that shared resolution path. Windows
 path-valued `.env` entries use backtick quoting so dotenv does not interpret
 `\r` or `\n` inside paths such as `runtime\node-v...`. Fresh `SESSION_SECRET`
 and `AUTH_SETUP_TOKEN` values are generated with

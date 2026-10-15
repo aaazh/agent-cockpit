@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <em>A local browser cockpit for Claude Code, OpenAI Codex, Kiro, OpenCode, and future command-line AI agents.</em>
+  <em>A local browser cockpit for Claude Code, OpenAI Codex, Kiro, OpenCode, Grok Build, and future command-line AI agents.</em>
 </p>
 
 <p align="center">
@@ -42,9 +42,9 @@
 
 Agent Cockpit is an open source, local-first web UI for command-line AI agents.
 It runs on your machine, talks to local CLIs such as Claude Code, OpenAI Codex,
-Kiro, and OpenCode, streams their work into a browser interface, and stores your
-conversations, memory, knowledge base, workspace context, and routine state on
-disk.
+Kiro, OpenCode, and Grok Build, streams their work into a browser interface, and
+stores your conversations, memory, knowledge base, workspace context, and
+routine state on disk.
 
 The core idea is simple: models and vendors will keep changing, but your working
 context should not reset every time. Agent Cockpit decouples your AI interaction
@@ -56,8 +56,8 @@ data from the vendor interface you happen to use today.
   them.
 - You want conversations, memory, knowledge-base entries, workspace context,
   and repeatable routines on a machine you control.
-- You want to switch from Claude Code to Codex, Kiro, or OpenCode without losing the
-  workspace understanding built up over time.
+- You want to switch from Claude Code to Codex, Kiro, OpenCode, or Grok Build
+  without losing the workspace understanding built up over time.
 - You use AI for coding, writing, research, planning, operations, or other
   knowledge work.
 - You are comfortable running a local server, or using the macOS/Linux/Windows
@@ -76,7 +76,7 @@ data from the vendor interface you happen to use today.
 
 | Without Agent Cockpit | With Agent Cockpit |
 | --- | --- |
-| AI work is scattered across terminal tabs and vendor apps. | Claude Code, Codex, Kiro, and OpenCode run from one browser UI. |
+| AI work is scattered across terminal tabs and vendor apps. | Claude Code, Codex, Kiro, OpenCode, and Grok Build run from one browser UI. |
 | Each vendor owns its own memory and history. | Conversations, memory, KB, and Workspace Context live locally. |
 | Switching vendors means starting over. | Provider-neutral workspace context follows the next backend. |
 | Remote access requires SSHing into a terminal. | Use the desktop web UI or mobile PWA through your own secure access path. |
@@ -85,9 +85,9 @@ data from the vendor interface you happen to use today.
 ## Core Capabilities
 
 **Unified CLI interface**
-Run Claude Code, OpenAI Codex, Kiro, and OpenCode from a browser-based chat surface. Switch
-backends per conversation while keeping the same workspace and interaction
-model.
+Run Claude Code, OpenAI Codex, Kiro, OpenCode, and Grok Build from a
+browser-based chat surface. Switch backends per conversation while keeping the
+same workspace and interaction model.
 
 **Local open storage**
 Conversation files, session metadata, settings, memory snapshots, and
@@ -147,6 +147,7 @@ passkeys, recovery codes, and optional legacy OAuth compatibility.
 | **OpenAI Codex** | `codex` | Fully supported |
 | **Kiro** | `kiro-cli` | Fully supported |
 | **OpenCode** | `opencode` | Fully supported, self-configured provider credentials |
+| **Grok Build** | `grok` | Supported; verified on macOS, Windows/Linux validation pending |
 
 See [BACKENDS.md](BACKENDS.md) and [docs/user/backends.md](docs/user/backends.md)
 for feature differences, auth notes, and setup guidance.
@@ -178,6 +179,8 @@ This has three important consequences:
     `npm install -g @openai/codex`)
   - [Kiro CLI](https://kiro.dev) (`kiro-cli`)
   - [OpenCode CLI](https://opencode.ai/docs/cli/) (`opencode`)
+  - [Grok Build CLI](https://docs.x.ai/build/overview) (`grok`, install with
+    the official installer or `npm install -g @xai-official/grok`)
 - Optional: [LibreOffice](https://www.libreoffice.org/) and/or
   [Pandoc](https://pandoc.org/) on `PATH` for broader Knowledge Base document
   conversion.

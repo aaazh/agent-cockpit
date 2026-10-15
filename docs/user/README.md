@@ -8,7 +8,7 @@ installed and the first owner account exists.
 - [Quickstart](quickstart.md) explains the first run from install to first
   conversation.
 - [Supported backends](backends.md) explains Claude Code, OpenAI Codex, Kiro,
-  and OpenCode setup differences.
+  OpenCode, and Grok Build setup differences.
 - [Open source models with Ollama and OpenCode](ollama-opencode.md) explains
   how to run local models through a persistent OpenCode provider profile.
 
@@ -28,6 +28,7 @@ installed and the first owner account exists.
 ## Related Deployment Topics
 
 - [macOS install](../deploy/macos.md)
+- [Linux install](../deploy/linux.md)
 - [Windows install](../deploy/windows.md)
 - [Remote access](../deploy/remote-access.md)
 - [Security and owner auth](../deploy/security.md)

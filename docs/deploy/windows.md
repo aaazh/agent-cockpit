@@ -24,10 +24,12 @@ Dev installs track `main`:
 The Windows installer is intentionally user-logon based. It does not install a
 Windows Service and does not run before any Windows user has logged in.
 
-When the welcome screen installs Claude Code or Codex on Windows, it installs
-the CLI into Agent Cockpit's per-user `cli-tools` prefix and Agent Cockpit runs
-the installed package entrypoint directly before falling back to npm command
-shims. No global Node/npm/PM2 install is required.
+When the welcome screen installs Claude Code, Codex, or Grok Build on Windows,
+it installs the CLI into Agent Cockpit's per-user `cli-tools` prefix and Agent
+Cockpit runs the installed package entrypoint directly before falling back to
+npm command shims. No global Node/npm/PM2 install is required. Grok Build's
+Windows support is covered by automated tests but has not yet been validated on
+a native Windows machine.
 
 ## After Install
 

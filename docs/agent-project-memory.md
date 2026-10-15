@@ -128,8 +128,10 @@ tool is unavailable.
 - Windows production self-update should also repair the current user's `Path`
   for `<installDir>\cli-tools` so existing installs gain terminal CLI access
   after updating without rerunning the full installer.
-- Windows Agent Cockpit-managed Codex terminal wrappers should call the recorded
-  private `node.exe` plus `<installDir>\cli-tools\node_modules\@openai\codex\bin\codex.js`
+- Windows Agent Cockpit-managed Codex and Grok Build terminal wrappers should
+  call the recorded private `node.exe` plus the package entrypoint
+  (`<installDir>\cli-tools\node_modules\@openai\codex\bin\codex.js` or
+  `<installDir>\cli-tools\node_modules\@xai-official\grok\bin\grok`)
   directly. Installer repair reruns, Install Doctor, self-update, and CLI update
   paths should all repair stale npm-generated wrappers. Do not depend on a
   global `node.exe`, and do not add the private runtime directory to the user's
