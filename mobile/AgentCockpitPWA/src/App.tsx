@@ -779,7 +779,7 @@ export default function App() {
           onAttach={() => attachInputRef.current?.click()}
           onRemoveAttachment={(id) => void removePendingAttachment(id)}
           onOcrAttachment={(id) => void ocrPendingAttachment(id)}
-          onSubmitInteraction={() => void submitInteraction()}
+          onSubmitInteraction={(answer) => void submitInteraction(answer)}
           onRemoveQueued={(index) => void removeQueuedMessage(index)}
           onEditQueued={openQueueEditor}
           onMoveQueued={(index, direction) => void moveQueuedMessage(index, direction)}

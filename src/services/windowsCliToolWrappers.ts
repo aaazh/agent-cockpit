@@ -4,7 +4,7 @@ import type { CliHarness, InstallNodeRuntime, InstallStatus } from '../types';
 
 const WINDOWS_CLI_TOOLS_DIR = 'cli-tools';
 
-type WrapperHarness = Extract<CliHarness, 'claude-code' | 'codex'>;
+type WrapperHarness = Extract<CliHarness, 'claude-code' | 'codex' | 'grok-build'>;
 
 interface EnsureWindowsCliToolWrappersOptions {
   cliToolsDir: string | null | undefined;
@@ -21,7 +21,7 @@ export interface WindowsCliToolWrapperResult {
 }
 
 interface WrapperSpec {
-  commandName: 'claude' | 'codex';
+  commandName: 'claude' | 'codex' | 'grok';
   targetPath: string;
   ps1: string;
   cmd: string;
@@ -60,7 +60,7 @@ export function ensureWindowsCliToolWrappers(options: EnsureWindowsCliToolWrappe
 
   const harnesses: WrapperHarness[] = options.harnesses && options.harnesses.length > 0
     ? options.harnesses
-    : ['claude-code', 'codex'];
+    : ['claude-code', 'codex', 'grok-build'];
 
   try {
     fs.mkdirSync(cliToolsDir, { recursive: true });
@@ -101,6 +101,11 @@ export function windowsPrivateNodeExe(nodeRuntime?: InstallNodeRuntime | null): 
 }
 
 function wrapperSpecForHarness(harness: WrapperHarness, cliToolsDir: string, nodeExe: string): WrapperSpec {
+  if (harness === 'grok-build') {
+    const targetPath = path.join(cliToolsDir, 'node_modules', '@xai-official', 'grok', 'bin', 'grok');
+    return { commandName: 'grok', targetPath, ps1: codexPowerShellWrapper(nodeExe, targetPath, 'Grok Build'),
+      cmd: codexCmdWrapper(nodeExe, targetPath, 'Grok Build', 'GROK_JS') };
+  }
   if (harness === 'codex') {
     const targetPath = path.join(cliToolsDir, 'node_modules', '@openai', 'codex', 'bin', 'codex.js');
     return {
@@ -119,7 +124,7 @@ function wrapperSpecForHarness(harness: WrapperHarness, cliToolsDir: string, nod
   };
 }
 
-function codexPowerShellWrapper(nodeExe: string, codexJs: string): string {
+function codexPowerShellWrapper(nodeExe: string, codexJs: string, label = 'Codex'): string {
   return [
     '$ErrorActionPreference = "Stop"',
     `$node = ${psSingleQuoted(nodeExe)}`,
@@ -129,7 +134,7 @@ function codexPowerShellWrapper(nodeExe: string, codexJs: string): string {
     '  exit 1',
     '}',
     'if (-not (Test-Path -LiteralPath $target)) {',
-    '  Write-Error "Codex CLI package entrypoint was not found. Reinstall Codex from Agent Cockpit."',
+    `  Write-Error "${label} CLI package entrypoint was not found. Reinstall ${label} from Agent Cockpit."`,
     '  exit 1',
     '}',
     '$nodeDir = Split-Path -Parent $node',
@@ -140,22 +145,22 @@ function codexPowerShellWrapper(nodeExe: string, codexJs: string): string {
   ].join('\n');
 }
 
-function codexCmdWrapper(nodeExe: string, codexJs: string): string {
+function codexCmdWrapper(nodeExe: string, codexJs: string, label = 'Codex', variable = 'CODEX_JS'): string {
   return [
     '@ECHO off',
     'SETLOCAL',
     `SET "NODE_EXE=${nodeExe}"`,
-    `SET "CODEX_JS=${codexJs}"`,
+    `SET "${variable}=${codexJs}"`,
     'IF NOT EXIST "%NODE_EXE%" (',
     '  ECHO Agent Cockpit private Node.js runtime was not found. Rerun the Agent Cockpit installer or self-update. 1>&2',
     '  EXIT /B 1',
     ')',
-    'IF NOT EXIST "%CODEX_JS%" (',
-    '  ECHO Codex CLI package entrypoint was not found. Reinstall Codex from Agent Cockpit. 1>&2',
+    `IF NOT EXIST "%${variable}%" (`,
+    `  ECHO ${label} CLI package entrypoint was not found. Reinstall ${label} from Agent Cockpit. 1>&2`,
     '  EXIT /B 1',
     ')',
     'FOR %%I IN ("%NODE_EXE%") DO SET "PATH=%%~dpI;%PATH%"',
-    '"%NODE_EXE%" "%CODEX_JS%" %*',
+    `"%NODE_EXE%" "%${variable}%" %*`,
     'EXIT /B %ERRORLEVEL%',
     '',
   ].join('\r\n');

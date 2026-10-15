@@ -20,6 +20,16 @@ describe('mobile app model helpers', () => {
     expect(model.displayMessagePreview('[Uploaded files: /tmp/image.png, notes.txt]')).toBe('2 attachments: image.png, notes.txt');
   });
 
+  test('only assistant delivery markers create downloadable workspace files', () => {
+    const client = { conversationWorkspaceFileURL: jest.fn(() => '/download'), getConversationWorkspaceFilePreview: jest.fn() };
+    const conversation = { id: 'fixture' };
+    const parsed = { uploadedPaths: [], deliveredPaths: ['/fixture/future.csv'] };
+    expect(model.fileReferencesFromParsed(client, conversation, 'user', parsed)).toEqual([]);
+    expect(model.fileReferencesFromParsed(client, conversation, 'assistant', parsed)).toMatchObject([
+      { path: '/fixture/future.csv', downloadURL: '/download' },
+    ]);
+  });
+
   test('normalizes reset session list items with explicit null fields for shared contracts', () => {
     const sessions = [{
       number: 1,
@@ -367,6 +377,9 @@ describe('mobile app model helpers', () => {
     expect(model.goalSupportsAction({ backend: 'claude-code' }, 'clear')).toBe(true);
     expect(model.formatGoalElapsed(65)).toBe('1m 05s');
     expect(model.cleanGoalObjectiveText('Goal setcodexShip mobile goals')).toBe('Ship mobile goals');
+    expect(model.cleanGoalObjectiveText('Goal setgrok-buildShip mobile goals')).toBe('Ship mobile goals');
+    expect(model.cleanGoalObjectiveText('Goal setGrok BuildShip mobile goals')).toBe('Ship mobile goals');
+    expect(model.cleanGoalObjectiveText('Grok Build should keep this prefix')).toBe('Grok Build should keep this prefix');
     expect(model.cleanGoalObjectiveText('Codex should keep this prefix')).toBe('Codex should keep this prefix');
     expect(model.cleanGoalObjectiveText('Goal settings should stay intact')).toBe('Goal settings should stay intact');
   });

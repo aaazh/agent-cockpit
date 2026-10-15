@@ -24,14 +24,14 @@ export function cleanGoalObjectiveText(value){
       strippedPrefix = true;
     }
     const withoutEventPrefix = text.replace(
-      /^Goal\s*(?:set(?=\s|:|codex|claude-code|claude-code-interactive|$)|resumed(?=\s|:|codex|claude-code|claude-code-interactive|$)|paused(?=\s|:|codex|claude-code|claude-code-interactive|$)|achieved(?=\s|:|codex|claude-code|claude-code-interactive|$)|budget\s*limited(?=\s|:|codex|claude-code|claude-code-interactive|$)|cleared(?=\s|:|codex|claude-code|claude-code-interactive|$)|updated(?=\s|:|codex|claude-code|claude-code-interactive|$))\s*:?\s*/i,
+      /^Goal\s*(?:set(?=\s|:|codex|claude-code|claude-code-interactive|grok-build|grok\s*build|$)|resumed(?=\s|:|codex|claude-code|claude-code-interactive|grok-build|grok\s*build|$)|paused(?=\s|:|codex|claude-code|claude-code-interactive|grok-build|grok\s*build|$)|achieved(?=\s|:|codex|claude-code|claude-code-interactive|grok-build|grok\s*build|$)|budget\s*limited(?=\s|:|codex|claude-code|claude-code-interactive|grok-build|grok\s*build|$)|cleared(?=\s|:|codex|claude-code|claude-code-interactive|grok-build|grok\s*build|$)|updated(?=\s|:|codex|claude-code|claude-code-interactive|grok-build|grok\s*build|$))\s*:?\s*/i,
       '',
     ).trim();
     if (withoutEventPrefix !== text) {
       text = withoutEventPrefix;
       strippedPrefix = true;
     }
-    if (strippedPrefix) text = text.replace(/^(?:codex|claude-code|claude-code-interactive)\s*/i, '').trim();
+    if (strippedPrefix) text = text.replace(/^(?:codex|claude-code|claude-code-interactive|grok-build|grok\s*build)\s*/i, '').trim();
     if (text === before) break;
   }
   return text;

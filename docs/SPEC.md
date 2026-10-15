@@ -10,6 +10,7 @@
 | 2. Data Models & File Structure | [spec-data-models.md](spec-data-models.md) | On-disk layout, JSON schemas, workspace identity and storage keys |
 | 3. API Endpoints | [spec-api-endpoints.md](spec-api-endpoints.md) | REST + WebSocket API surface |
 | 4. Backend Services | [spec-backend-services.md](spec-backend-services.md) | ChatService, adapter system, KB pipeline, update service |
+| 4.2 Grok Build | [spec-grok-build.md](spec-grok-build.md) | ACP transport, profiles/auth, interactions, background work, usage/media, native goals, and compatibility checks |
 | 5. Workspace Context Feature | [spec-workspace-context.md](spec-workspace-context.md) | Markdown-first workspace operating memory, CLI-maintained context files, scan and maintenance runs |
 | 6. Workspace Routines | [spec-routines.md](spec-routines.md) | Workspace-owned markdown workflows, scheduled/manual harness runs, proposal installation, run folders, and Telegram outreach destination pairing |
 | 7. Server Initialization & Security | [spec-server-security.md](spec-server-security.md) | Config, startup order, auth, CSRF, CSP |
@@ -65,6 +66,7 @@ Engineering notes that capture empirical findings — not proposals or specs, bu
 | [research/claude-code-interactive.md](research/claude-code-interactive.md) | Research prompt and test matrix for evaluating Claude Code Interactive viability without Remote Control or a user-facing terminal. |
 | [research/claude-code-interactive-report.md](research/claude-code-interactive-report.md) | Findings from the Claude Code Interactive spike: hidden PTY plus transcript watching is viable but private-shape/version-sensitive. |
 | [research/kiro-bedrock-parity.md](research/kiro-bedrock-parity.md) | Differences observed between Kiro (AWS Bedrock-routed) and Claude Code (direct Anthropic API) for Opus 4.7 — image format/dimension caps, ACP stream termination, JSON-RPC error extraction, etc. |
+| [research/grok-build-acp-evaluation.md](research/grok-build-acp-evaluation.md) | Grok Build ACP capability matrix, authenticated protocol findings, integration scope, and verification gates underlying the Grok Build implementation. |
 | [research/frontend-surface-split-review-report.md](research/frontend-surface-split-review-report.md) | Review-cycle report for splitting large desktop and mobile frontend surfaces into focused modules without behavior or visual redesign. |
 | [research/linux-release-implementation-review-report.md](research/linux-release-implementation-review-report.md) | Review-cycle report for Linux production release support, including phase findings, implemented items, verification commands, and residual test notes. |
 | [research/usage-cost-estimation-review-report.md](research/usage-cost-estimation-review-report.md) | Review-cycle report for Usage Cost / Estimated Cost implementation, pricing-source verification, fixes, verification commands, and residual risks. |

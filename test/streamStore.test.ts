@@ -477,6 +477,40 @@ test('respond() with mode:stdin clears pendingInteraction without a fresh send',
   expect(state.uiState).toBeNull();
 });
 
+test.each([
+  {
+    label: 'next question with the same tool ID',
+    first: { isQuestion: true, questions: [{ question: 'Color?', options: [] }] },
+    next: { isQuestion: true, questions: [{ question: 'Size?', options: [] }] },
+    expected: { type: 'userQuestion', question: 'Size?', options: [] },
+  },
+  {
+    label: 'revised plan',
+    first: { isPlanMode: true, planAction: 'exit', planContent: '# Original plan' },
+    next: { isPlanMode: true, planAction: 'exit', planContent: '# Revised plan' },
+    expected: { type: 'planApproval', planContent: '# Revised plan' },
+  },
+])('respond() preserves a $label received before the input response', async ({ first, next, expected }) => {
+  const ws = await openWs('c1');
+  const Store = (window as any).StreamStore;
+  const api = (global as any).AgentApi;
+  ws.dispatch({ type: 'tool_activity', id: 'same-tool', ...first });
+  let acknowledge!: (response: ReturnType<typeof makeResponse>) => void;
+  api.fetch.mockReturnValueOnce(new Promise(resolve => { acknowledge = resolve; }));
+  const answering = Store.respond('c1', 'Blue');
+  ws.dispatch({ type: 'tool_activity', id: 'same-tool', ...next });
+  acknowledge(makeResponse({ mode: 'stdin' }));
+  await answering;
+
+  expect(Store.getState('c1').pendingInteraction).toEqual(expected);
+  expect(Store.getState('c1').uiState).toBe('awaiting');
+  expect(Store.getState('c1').respondPending).toBe(false);
+  api.fetch.mockResolvedValueOnce(makeResponse({ mode: 'stdin' }));
+  await Store.respond('c1', 'Large');
+  expect(api.fetch).toHaveBeenCalledTimes(2);
+  expect(Store.getState('c1').pendingInteraction).toBeNull();
+});
+
 test('respond() with mode:message clears pendingInteraction and sends as new message', async () => {
   const ws = await openWs('c1');
   const Store = (window as any).StreamStore;
@@ -877,13 +911,13 @@ test('setGoal shows an immediate optimistic strip and upserts the returned goal 
   expect(state.goal.objective).toBe('ship it');
 });
 
-test('goal status polling keeps a local runtime goal when backend status is not readable yet', async () => {
+test.each(['codex', 'grok-build'])('goal status polling keeps a local %s runtime goal when backend status is not readable yet', async backend => {
   const Store = (window as any).StreamStore;
   const api = (global as any).AgentApi;
   api.fetch.mockResolvedValueOnce(makeResponse({
     id: 'c1',
     title: 'Goal status pending',
-    backend: 'codex',
+    backend,
     externalSessionId: 'thread-goal',
     messages: [],
   }));

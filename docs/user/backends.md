@@ -7,6 +7,7 @@ authenticated on the same machine that runs the Agent Cockpit server.
 | --- | --- | --- | --- |
 | Claude Code | `claude` | Planning, tool-heavy coding, plan mode | Supports token and cost reporting, plan mode, subagents, and mid-turn input. |
 | OpenAI Codex | `codex` | Fast coding iteration and goal-mode workflows | Uses Codex App Server, supports subagents, goal controls, token usage, and full local execution defaults. |
+| Grok Build | `grok` | Coding, native goals, plan approval and subagents | Uses ACP plus native extensions; reuses terminal login, reports model usage/cost and optional account billing. |
 | Kiro | `kiro-cli` | ACP-based workflows and Kiro-specific projects | Uses ACP over stdin/stdout and reports credits/context percentage rather than token cost. |
 | OpenCode | `opencode` | Multi-provider coding through DeepSeek, Groq, Gemini, OpenRouter, and similar providers | Self-configured provider credentials and model routing. Supports thinking, tool activity, and session resume. |
 
@@ -79,6 +80,32 @@ Image and PDF one-shot workflows, including attachment OCR and Knowledge Base
 image conversion, require an OpenCode model that reports the required media
 input capability. Text-only OpenCode models still work for normal chat and
 text-based context workflows.
+
+## Grok Build
+
+Install the official CLI on the server machine and authenticate:
+
+```bash
+npm install -g @xai-official/grok
+grok login
+```
+
+Select **Grok Build** in Settings → CLI Profiles → Harness. A self-configured
+profile reuses your existing terminal authentication. Welcome can check that
+login or start `grok login --device-auth`; its setup profile also shares your
+normal `~/.grok` login. Explicit account profiles can use a separate config
+directory mapped to `GROK_HOME`.
+
+Grok supports thinking, tools, grouped subagents, questions, plan approval,
+mid-turn input, native goal controls, and later session recovery. Goal token
+budgets are soft and execution can exceed them. The usage display distinguishes
+reported model cost from optional subscription/account balances; missing quota
+fields remain hidden. Image/PDF tasks currently require `grok-4.7`. Native
+memory is disabled in Cockpit sessions; use Cockpit Memory and Workspace Context.
+An interrupted active turn is not automatically reattached or replayed.
+
+Compatibility is verified with Grok Build 1.0.52 on macOS arm64. Native Windows
+and Linux compatibility still needs platform validation.
 
 ## Backend Switching
 

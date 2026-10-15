@@ -126,14 +126,14 @@ export function cleanGoalObjectiveText(value: string | null | undefined): string
       strippedPrefix = true;
     }
     const withoutEventPrefix = text.replace(
-      /^Goal\s*(?:set(?=\s|:|codex|claude-code|$)|resumed(?=\s|:|codex|claude-code|$)|paused(?=\s|:|codex|claude-code|$)|achieved(?=\s|:|codex|claude-code|$)|budget\s*limited(?=\s|:|codex|claude-code|$)|cleared(?=\s|:|codex|claude-code|$)|updated(?=\s|:|codex|claude-code|$))\s*:?\s*/i,
+      /^Goal\s*(?:set(?=\s|:|codex|claude-code|grok-build|grok\s*build|$)|resumed(?=\s|:|codex|claude-code|grok-build|grok\s*build|$)|paused(?=\s|:|codex|claude-code|grok-build|grok\s*build|$)|achieved(?=\s|:|codex|claude-code|grok-build|grok\s*build|$)|budget\s*limited(?=\s|:|codex|claude-code|grok-build|grok\s*build|$)|cleared(?=\s|:|codex|claude-code|grok-build|grok\s*build|$)|updated(?=\s|:|codex|claude-code|grok-build|grok\s*build|$))\s*:?\s*/i,
       '',
     ).trim();
     if (withoutEventPrefix !== text) {
       text = withoutEventPrefix;
       strippedPrefix = true;
     }
-    if (strippedPrefix) text = text.replace(/^(?:codex|claude-code)\s*/i, '').trim();
+    if (strippedPrefix) text = text.replace(/^(?:codex|claude-code|grok-build|grok\s*build)\s*/i, '').trim();
     if (text === before) break;
   }
 
@@ -150,6 +150,6 @@ function goalStatusTitle(status: ThreadGoalStatus): string {
 }
 
 function normalizeGoalBackend(backendId: string): ThreadGoalBackend | undefined {
-  if (backendId === 'codex' || backendId === 'claude-code') return backendId;
+  if (backendId === 'codex' || backendId === 'claude-code' || backendId === 'grok-build') return backendId;
   return undefined;
 }

@@ -249,7 +249,7 @@ export function goalCapabilityForBackend(
 }
 
 export function goalActionUnsupportedMessage(action: 'pause' | 'resume' | 'clear', backendID?: string | null): string {
-  const backendName = isClaudeBackend(backendID) ? 'Claude Code' : backendID === 'codex' ? 'Codex' : 'this backend';
+  const backendName = isClaudeBackend(backendID) ? 'Claude Code' : backendID === 'codex' ? 'Codex' : backendID === 'grok-build' ? 'Grok Build' : 'this backend';
   return `Goal ${action} is not supported by ${backendName}.`;
 }
 
@@ -295,7 +295,9 @@ export function fileReferencesFromParsed(
   if (role === 'user') {
     references.push(...parsed.uploadedPaths.map((path) => makeConversationUploadReference(client, conversation, path)));
   }
-  references.push(...parsed.deliveredPaths.map((path) => makeConversationWorkspaceFileReference(client, conversation, path)));
+  if (role === 'assistant') {
+    references.push(...parsed.deliveredPaths.map((path) => makeConversationWorkspaceFileReference(client, conversation, path)));
+  }
   return references;
 }
 
@@ -670,14 +672,14 @@ export function cleanGoalObjectiveText(value: unknown): string {
       strippedPrefix = true;
     }
     const withoutEventPrefix = text.replace(
-      /^Goal\s*(?:set(?=\s|:|codex|claude-code|claude-code-interactive|$)|resumed(?=\s|:|codex|claude-code|claude-code-interactive|$)|paused(?=\s|:|codex|claude-code|claude-code-interactive|$)|achieved(?=\s|:|codex|claude-code|claude-code-interactive|$)|budget\s*limited(?=\s|:|codex|claude-code|claude-code-interactive|$)|cleared(?=\s|:|codex|claude-code|claude-code-interactive|$)|updated(?=\s|:|codex|claude-code|claude-code-interactive|$))\s*:?\s*/i,
+      /^Goal\s*(?:set(?=\s|:|codex|claude-code|claude-code-interactive|grok-build|grok\s*build|$)|resumed(?=\s|:|codex|claude-code|claude-code-interactive|grok-build|grok\s*build|$)|paused(?=\s|:|codex|claude-code|claude-code-interactive|grok-build|grok\s*build|$)|achieved(?=\s|:|codex|claude-code|claude-code-interactive|grok-build|grok\s*build|$)|budget\s*limited(?=\s|:|codex|claude-code|claude-code-interactive|grok-build|grok\s*build|$)|cleared(?=\s|:|codex|claude-code|claude-code-interactive|grok-build|grok\s*build|$)|updated(?=\s|:|codex|claude-code|claude-code-interactive|grok-build|grok\s*build|$))\s*:?\s*/i,
       '',
     ).trim();
     if (withoutEventPrefix !== text) {
       text = withoutEventPrefix;
       strippedPrefix = true;
     }
-    if (strippedPrefix) text = text.replace(/^(?:codex|claude-code|claude-code-interactive)\s*/i, '').trim();
+    if (strippedPrefix) text = text.replace(/^(?:codex|claude-code|claude-code-interactive|grok-build|grok\s*build)\s*/i, '').trim();
     if (text === before) break;
   }
   return text;

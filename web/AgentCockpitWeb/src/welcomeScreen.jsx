@@ -143,7 +143,7 @@ export function WelcomeScreen({ onDone, onOpenSettings, onNewConversation }){
 
   const checks = doctor && Array.isArray(doctor.checks) ? doctor.checks : [];
   const requiredChecks = checks.filter(item => item.required);
-  const cliChecks = checks.filter(item => ['claude-cli', 'codex-cli', 'kiro-cli'].includes(item.id));
+  const cliChecks = checks.filter(item => ['claude-cli', 'codex-cli', 'kiro-cli', 'grok-cli'].includes(item.id));
   const optionalChecks = checks.filter(item => ['pandoc', 'libreoffice', 'mobile-build'].includes(item.id));
   const installLine = install
     ? `${install.channel || 'dev'} channel · ${install.source || 'unknown'} · ${install.version || 'unversioned'}`
@@ -374,12 +374,14 @@ function welcomeCliAuthHarness(checkId){
   if (checkId === 'claude-cli') return 'claude-code';
   if (checkId === 'codex-cli') return 'codex';
   if (checkId === 'kiro-cli') return 'kiro';
+  if (checkId === 'grok-cli') return 'grok-build';
   return null;
 }
 
 function welcomeCliAuthLabel(harness){
   if (harness === 'codex') return 'Codex';
   if (harness === 'claude-code') return 'Claude Code';
+  if (harness === 'grok-build') return 'Grok Build';
   return 'Kiro';
 }
 

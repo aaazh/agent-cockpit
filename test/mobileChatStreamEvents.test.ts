@@ -40,7 +40,14 @@ describe('mobile chat stream event projections', () => {
       isPlanMode: true,
       planAction: 'exit',
       planContent: '# Plan',
-    })).toEqual([]);
+    })).toEqual([
+      { type: 'set-pending-interaction', interaction: { kind: 'plan', prompt: '# Plan' } },
+      { type: 'notify', notification: { title: 'Agent Cockpit needs approval', body: '# Plan' } },
+    ]);
+    expect(events.chatStreamEventActions({ type: 'tool_activity', isPlanMode: true, planAction: 'exit' })).toEqual([
+      { type: 'set-pending-interaction', interaction: { kind: 'plan', prompt: 'Plan ready for approval.' } },
+      { type: 'notify', notification: { title: 'Agent Cockpit needs approval', body: 'Plan ready for approval.' } },
+    ]);
     expect(events.chatStreamEventActions({
       type: 'tool_activity',
       isQuestion: true,

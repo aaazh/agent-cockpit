@@ -6,6 +6,7 @@ import type { CliProfile, Settings } from '../types';
 import { resolveClaudeCliRuntime } from './backends/claudeCode';
 import { resolveCodexCliRuntime } from './backends/codex';
 import { resolveOpenCodeCliRuntime } from './backends/opencode';
+import { grokAuthenticationStatus, resolveGrokCliRuntime } from './backends/grokRuntime';
 import { buildCliCommandInvocation, type CliCommandResolution } from './cliCommandResolver';
 import { isSetupAccountCliProfile } from './cliProfiles';
 
@@ -132,6 +133,16 @@ export class CliProfileAuthService {
     try {
       this._assertSupported(profile);
       const runtime = await this._runtimeFor(profile);
+      if (profile.harness === 'grok-build') {
+        const status = await grokAuthenticationStatus(profile);
+        const apiKeyConfigured = !!runtime.env.XAI_API_KEY && !status.authenticated;
+        const authenticated = apiKeyConfigured ? null : status.authenticated;
+        return { profileId: profile.id, harness: profile.harness, command: runtime.displayCommand || runtime.command,
+          available: true, authenticated, status: status.error ? 'error' : authenticated || apiKeyConfigured ? 'ok' : 'not-authenticated',
+          output: status.error ? redactCliAuthText(status.error) : authenticated ? 'Grok Build credentials and access verified.'
+            : apiKeyConfigured ? 'An API key is configured. Authorization is verified when a real Grok request is made.' : 'Grok Build authentication is required.',
+          ...(status.error ? { error: redactCliAuthText(status.error) } : {}) };
+      }
       const { args } = this._statusCommand(profile);
       const invocation = buildCliCommandInvocation(runtime, args);
       const result = await this._runCommand(invocation.command, invocation.args, runtime.env, 15_000);
@@ -279,13 +290,13 @@ export class CliProfileAuthService {
   }
 
   private _assertSupported(profile: CliProfile): void {
-    if (profile.harness !== 'codex' && profile.harness !== 'claude-code' && profile.harness !== 'opencode') {
+    if (profile.harness !== 'codex' && profile.harness !== 'claude-code' && profile.harness !== 'opencode' && profile.harness !== 'grok-build') {
       throw new Error('CLI status checks are not supported for Kiro profiles yet.');
     }
   }
 
   private _assertCanAuth(profile: CliProfile): void {
-    if (profile.harness !== 'codex' && profile.harness !== 'claude-code') {
+    if (profile.harness !== 'codex' && profile.harness !== 'claude-code' && profile.harness !== 'grok-build') {
       throw new Error(profile.harness === 'opencode'
         ? 'Remote authentication is not supported for OpenCode profiles yet. Configure OpenCode with opencode auth login.'
         : 'Remote authentication is not supported for Kiro profiles yet.');
@@ -303,7 +314,9 @@ export class CliProfileAuthService {
       ? resolveCodexCliRuntime(profile)
       : profile.harness === 'opencode'
         ? resolveOpenCodeCliRuntime(profile)
-        : resolveClaudeCliRuntime(profile);
+        : profile.harness === 'grok-build'
+          ? resolveGrokCliRuntime(profile)
+          : resolveClaudeCliRuntime(profile);
     if (runtime.configDir) {
       await fsp.mkdir(runtime.configDir, { recursive: true });
     }
@@ -312,12 +325,14 @@ export class CliProfileAuthService {
 
   private _loginCommand(profile: CliProfile): { args: string[] } {
     if (profile.harness === 'codex') return { args: ['login', '--device-auth'] };
+    if (profile.harness === 'grok-build') return { args: ['--no-auto-update', 'login', '--device-auth'] };
     return { args: ['auth', 'login', '--claudeai'] };
   }
 
   private _statusCommand(profile: CliProfile): { args: string[] } {
     if (profile.harness === 'codex') return { args: ['login', 'status'] };
     if (profile.harness === 'opencode') return { args: ['--version'] };
+    if (profile.harness === 'grok-build') return { args: [] }; // ACP verifies auth; there is no CLI auth-status command.
     return { args: ['auth', 'status', '--json'] };
   }
 
@@ -325,11 +340,12 @@ export class CliProfileAuthService {
     if (profile.harness === 'codex') return 'codex';
     if (profile.harness === 'claude-code') return 'claude';
     if (profile.harness === 'opencode') return 'opencode';
+    if (profile.harness === 'grok-build') return 'grok';
     return 'kiro-cli';
   }
 
   private _harnessLabel(profile: CliProfile): string {
-    return profile.harness === 'codex' ? 'Codex' : profile.harness === 'claude-code' ? 'Claude Code' : profile.harness === 'opencode' ? 'OpenCode' : 'Kiro';
+    return profile.harness === 'codex' ? 'Codex' : profile.harness === 'claude-code' ? 'Claude Code' : profile.harness === 'opencode' ? 'OpenCode' : profile.harness === 'grok-build' ? 'Grok Build' : 'Kiro';
   }
 
   private _addEvent(snapshot: CliAuthJobSnapshot, type: CliAuthEventType, text: string): void {
@@ -410,6 +426,13 @@ export class CliProfileAuthService {
     const startedAt = Date.now();
     let lastOutput = '';
     while (Date.now() - startedAt <= this._statusPollTimeoutMs) {
+      if (profile.harness === 'grok-build') {
+        const status = await grokAuthenticationStatus(profile);
+        if (status.error) throw new Error(status.error);
+        if (status.authenticated) return;
+        await this._sleep(this._statusPollIntervalMs);
+        continue;
+      }
       const invocation = buildCliCommandInvocation(runtime, statusArgs);
       const result = await this._runCommand(
         invocation.command,
@@ -521,7 +544,8 @@ function stripSetupAuthHomeEnv(harness: CliProfile['harness'], env: Record<strin
   for (const [key, value] of Object.entries(env)) {
     const normalized = key.toUpperCase();
     const remove = (harness === 'claude-code' && normalized === 'CLAUDE_CONFIG_DIR')
-      || (harness === 'codex' && normalized === 'CODEX_HOME');
+      || (harness === 'codex' && normalized === 'CODEX_HOME')
+      || (harness === 'grok-build' && normalized === 'GROK_HOME');
     if (remove) {
       changed = true;
       continue;
@@ -541,7 +565,8 @@ export function redactCliAuthText(input: string): string {
     .replace(/(access[_-]?token["']?\s*[:=]\s*["']?)[A-Za-z0-9._~+/-]+=*/gi, '$1[REDACTED]')
     .replace(/(refresh[_-]?token["']?\s*[:=]\s*["']?)[A-Za-z0-9._~+/-]+=*/gi, '$1[REDACTED]')
     .replace(/(api[_-]?key["']?\s*[:=]\s*["']?)[A-Za-z0-9._~+/-]+=*/gi, '$1[REDACTED]')
-    .replace(/(sk-[A-Za-z0-9]{8})[A-Za-z0-9_-]+/g, '$1[REDACTED]');
+    .replace(/(sk-[A-Za-z0-9]{8})[A-Za-z0-9_-]+/g, '$1[REDACTED]')
+    .replace(/\bxai-[A-Za-z0-9_-]{20,}/g, 'xai-[REDACTED]');
 }
 
 function interpretCliAuthStatus(

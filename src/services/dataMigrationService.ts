@@ -1419,6 +1419,9 @@ function checkCliProfile(profile: PersistedCliProfile, dataRoot: string): CheckS
   if (profile.disabled) return skipped(`${label} is disabled`);
   if (!harness) return warn(`${label} is missing CLI harness; reconfigure this profile.`);
   if (harness === 'kiro') return warn(`${label} uses system Kiro CLI auth outside Agent Cockpit; recheck on this machine.`);
+  if (harness === 'grok-build' && !profile.configDir && profile.id.startsWith('setup-grok-build-account')) {
+    return warn(`${label} uses system Grok Build auth outside Agent Cockpit; run Check login on this machine.`);
+  }
   if (profile.authMode === 'account') {
     if (!profile.configDir) return warn(`${label} account profile has no configDir yet; re-auth may create one.`);
     const configDir = path.resolve(profile.configDir);

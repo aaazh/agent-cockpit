@@ -36,6 +36,7 @@ const CLI_HARNESS_OPTIONS = [
   { id: 'claude-code', label: 'Claude Code' },
   { id: 'kiro', label: 'Kiro' },
   { id: 'opencode', label: 'OpenCode' },
+  { id: 'grok-build', label: 'Grok Build' },
 ];
 
 function cliHarnessForBackend(backendId){
@@ -176,7 +177,7 @@ function bedrockEnvWarning(profile){
 }
 
 function cliDefaultCommand(harness){
-  return harness === 'codex' ? 'codex' : harness === 'kiro' ? 'kiro-cli' : harness === 'opencode' ? 'opencode' : 'claude';
+  return harness === 'codex' ? 'codex' : harness === 'kiro' ? 'kiro-cli' : harness === 'opencode' ? 'opencode' : harness === 'grok-build' ? 'grok' : 'claude';
 }
 
 function defaultCliProfileName(harness){
@@ -192,6 +193,7 @@ function cliSelfConfiguredHome(harness){
   if (harness === 'codex') return '~/.codex';
   if (harness === 'claude-code') return '~/.claude';
   if (harness === 'opencode') return '~/.local/share/opencode and ~/.config/opencode';
+  if (harness === 'grok-build') return '~/.grok';
   return 'the server Kiro CLI account';
 }
 

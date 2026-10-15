@@ -136,10 +136,10 @@ function formatMemoryOutcomeAction(action){
   }
 }
 
-export function InteractionCard({ convId, interaction, respondPending }){
+export function InteractionCard({ convId, interaction, respondPending, allowPlanFeedback = false }){
   if (!interaction) return null;
   if (interaction.type === 'planApproval') {
-    return <PlanApprovalCard convId={convId} planContent={interaction.planContent} respondPending={respondPending}/>;
+    return <PlanApprovalCard convId={convId} planContent={interaction.planContent} respondPending={respondPending} allowFeedback={allowPlanFeedback}/>;
   }
   if (interaction.type === 'userQuestion') {
     return <QuestionCard convId={convId} question={interaction.question} options={interaction.options} respondPending={respondPending}/>;
@@ -160,7 +160,8 @@ const AWAITING_DOT_STYLE = {
   boxShadow: "0 0 0 3px color-mix(in oklch, var(--status-awaiting), transparent 80%)",
 };
 
-function PlanApprovalCard({ convId, planContent, respondPending }){
+function PlanApprovalCard({ convId, planContent, respondPending, allowFeedback }){
+  const [feedback, setFeedback] = React.useState('');
   const html = planContent ? renderMarkdown(planContent) : '';
   return (
     <div className="plan" role="group" aria-label="Plan approval">
@@ -175,8 +176,14 @@ function PlanApprovalCard({ convId, planContent, respondPending }){
       ) : (
         <div className="u-dim" style={{fontSize:13}}>No plan content.</div>
       )}
+      {allowFeedback ? (
+        <textarea className="inp" aria-label="Plan revision feedback" placeholder="Describe changes…" value={feedback} disabled={respondPending} onChange={event => setFeedback(event.target.value)}/>
+      ) : null}
       <div className="plan-actions">
         <span className="spacer" style={{flex:1}}/>
+        {allowFeedback ? (
+          <button className="btn" disabled={respondPending || !feedback.trim()} onClick={() => StreamStore.respond(convId, feedback.trim())}>Request changes</button>
+        ) : null}
         <button
           className="btn danger"
           disabled={respondPending}

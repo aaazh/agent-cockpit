@@ -59,10 +59,10 @@ export function streamEventNotification(event: StreamEvent): StreamEventNotifica
     };
   }
   if (event.type === 'tool_activity') {
-    if (event.isPlanMode && event.planContent && event.planAction !== 'exit') {
+    if (event.isPlanMode && (event.planContent || event.planAction === 'exit')) {
       return {
         title: 'Agent Cockpit needs approval',
-        body: event.planContent,
+        body: event.planContent || 'Plan ready for approval.',
       };
     }
     if (event.isQuestion && event.questions?.length) {
@@ -91,8 +91,8 @@ export function chatStreamEventActions(event: StreamEvent): ChatStreamEventActio
       actions.push({ type: 'set-stream-placeholder', value: false });
       break;
     case 'tool_activity': {
-      if (event.isPlanMode && event.planContent && event.planAction !== 'exit') {
-        actions.push({ type: 'set-pending-interaction', interaction: { kind: 'plan', prompt: event.planContent } });
+      if (event.isPlanMode && (event.planContent || event.planAction === 'exit')) {
+        actions.push({ type: 'set-pending-interaction', interaction: { kind: 'plan', prompt: event.planContent || 'Plan ready for approval.' } });
       } else if (event.isQuestion && event.questions?.length) {
         const question = event.questions[0];
         actions.push({

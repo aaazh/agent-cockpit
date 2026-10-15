@@ -467,7 +467,8 @@ export class SettingsService {
 function isCliAuthHomeEnvKey(harness: CliProfile['harness'], key: string): boolean {
   const normalized = key.toUpperCase();
   return (harness === 'claude-code' && normalized === 'CLAUDE_CONFIG_DIR')
-    || (harness === 'codex' && normalized === 'CODEX_HOME');
+    || (harness === 'codex' && normalized === 'CODEX_HOME')
+    || (harness === 'grok-build' && normalized === 'GROK_HOME');
 }
 
 function normalizeClaudeCodeProfileConfig(value: unknown): NonNullable<CliProfile['claudeCode']> {

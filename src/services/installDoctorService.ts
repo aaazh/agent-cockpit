@@ -10,6 +10,7 @@ import { ensureWindowsCliToolWrappersForInstall } from './windowsCliToolWrappers
 import { persistWindowsUserPathEntry, prependProcessPathEntry } from './windowsUserPath';
 import { detectLibreOffice, resetLibreOfficeDetection, type LibreOfficeStatus } from './knowledgeBase/libreOffice';
 import { detectPandoc, resetPandocDetection, type PandocStatus } from './knowledgeBase/pandoc';
+import { resolveGrokCliRuntime } from './backends/grokRuntime';
 
 const execFileAsync = promisify(execFile);
 const INSTALL_TIMEOUT_MS = 10 * 60 * 1000;
@@ -242,6 +243,9 @@ export class InstallDoctorService {
     checks.push(await this.checkCommandCandidates('claude-cli', 'Claude Code CLI', platformCliCommands('claude', install).map(command => [...command, '--version']), false, 'Claude Code CLI responded.', CLAUDE_CLI_REMEDIATION, this.actionsForCheck('claude-cli', homebrewAvailable, install)));
     checks.push(await this.checkCommandCandidates('codex-cli', 'Codex CLI', platformCliCommands('codex', install).map(command => [...command, '--version']), false, 'Codex CLI responded.', CODEX_CLI_REMEDIATION, this.actionsForCheck('codex-cli', homebrewAvailable, install)));
     checks.push(await this.checkCommand('kiro-cli', 'Kiro CLI', ['kiro-cli', '--version'], false, 'Kiro CLI responded.', kiroCliRemediation(), this.actionsForCheck('kiro-cli', homebrewAvailable, install)));
+    const grok = resolveGrokCliRuntime();
+    checks.push(await this.checkCommand('grok-cli', 'Grok Build CLI', [grok.command, ...(grok.argsPrefix || []), '--no-auto-update', '--version'], false,
+      'Grok Build CLI responded.', 'Install Grok Build with npm i -g @xai-official/grok, then run grok login --device-auth. Refresh checks after installation.', this.actionsForCheck('grok-cli', homebrewAvailable, install)));
     checks.push(await this.checkPandoc(homebrewAvailable));
     checks.push(await this.checkLibreOffice(homebrewAvailable));
     checks.push(this.checkUpdateChannel(install));
@@ -503,6 +507,7 @@ export class InstallDoctorService {
   private actionDefinitions(homebrewAvailable: boolean, install?: InstallStatus): Map<string, InstallActionDefinition> {
     const claudeNpmInstall = npmInstallCommand('@anthropic-ai/claude-code@latest', install);
     const codexNpmInstall = npmInstallCommand('@openai/codex@latest', install);
+    const grokNpmInstall = npmInstallCommand('@xai-official/grok@latest', install);
     const definitions: InstallActionDefinition[] = [
       {
         action: { id: 'claude-cli:npm-install', kind: 'command', label: 'Install Claude Code', description: 'Installs the Claude Code CLI with npm.', command: claudeNpmInstall },
@@ -515,6 +520,8 @@ export class InstallDoctorService {
       },
       { action: { id: 'codex-cli:docs', kind: 'link', label: 'Open docs', href: 'https://github.com/openai/codex' } },
       { action: { id: 'kiro-cli:docs', kind: 'link', label: 'Open docs', href: 'https://kiro.dev/docs/cli/installation/' } },
+      { action: { id: 'grok-cli:npm-install', kind: 'command', label: 'Install Grok Build', description: 'Installs the official Grok Build CLI.', command: grokNpmInstall }, command: grokNpmInstall },
+      { action: { id: 'grok-cli:docs', kind: 'link', label: 'Open docs', href: 'https://docs.x.ai/build/overview' } },
       { action: { id: 'pandoc:official-download', kind: 'link', label: 'Open installer', href: 'https://pandoc.org/installing.html' } },
       { action: { id: 'libreoffice:official-download', kind: 'link', label: 'Open download', href: 'https://www.libreoffice.org/download/download-libreoffice/' } },
       {
@@ -621,7 +628,7 @@ export class InstallDoctorService {
 
   private async persistWindowsCliToolsPath(actionId: string): Promise<CommandResult | null> {
     if (process.platform !== 'win32') return null;
-    if (!actionId.startsWith('claude-cli:') && !actionId.startsWith('codex-cli:')) return null;
+    if (!actionId.startsWith('claude-cli:') && !actionId.startsWith('codex-cli:') && !actionId.startsWith('grok-cli:')) return null;
     const install = this.installStateService.getStatus();
     const dir = windowsCliToolsDir(install);
     if (!dir) return null;
@@ -635,7 +642,7 @@ export class InstallDoctorService {
       ? 'claude-code'
       : actionId.startsWith('codex-cli:')
         ? 'codex'
-        : null;
+        : actionId.startsWith('grok-cli:') ? 'grok-build' : null;
     if (!harness) return null;
     return ensureWindowsCliToolWrappersForInstall(
       this.installStateService.getStatus(),

@@ -275,6 +275,40 @@ tool is unavailable.
 
 ## Process Management
 
+- `BackendRegistry.shutdownAll()` also runs after CLI updates, so adapter
+  shutdown must permit subsequent runtimes and close stale startups after reset.
+- Grok goal state reads require `sessionId` and workspace `cwd`; native subagent
+  IDs differ from child session IDs. Keep fixture request validation strict.
+  The macOS native suite covers questions/revised plans and goal
+  set/pause/resume-to-active/pause/clear/status plus full autonomous completion.
+  A small file goal took about 217 seconds through native ACP and 152 seconds
+  through Cockpit; drain post-complete updates and keep an external deadline.
+  Real valid-key/two-account runs and Windows/Linux certification remain pending.
+- Grok session preparation is serialized per runtime. Goal status reads and
+  pause/clear controls only attach an existing persisted native session (no
+  creation, recovery, or MCP refresh); controls reserve the runtime before
+  attaching, and every turn re-announces `external_session`/`backend_runtime`.
+  Keep the restricted text wrap when a recovery prompt is prepended.
+- Grok 1.0.52 API-key-only ACP sessions require headless `xai.api_key` auth,
+  even when initialization advertises only `grok.com`. Cached terminal login
+  takes precedence, and an empty isolated auth home cannot inherit it.
+
+- Grok Build uses `grok-build` profiles and focused `grok*.ts` backend modules
+  through ACP plus native extensions. Run `npm run e2e:grok-build` against an
+  authenticated real CLI for version drift; the current native baseline is
+  1.0.52 on macOS arm64, not a Windows/Linux compatibility claim.
+- `npm run e2e:grok-build-ui` verifies real desktop/mobile behavior using an
+  isolated PM2 fixture server and temporary data. Both native runners record
+  CLI/OS/Node/git-state compatibility evidence. Do not run full Jest asset-build
+  fixtures concurrently with browser checks; rebuild production assets after
+  the full regression suite before checking the bundle budget.
+- Restricted Grok calls must verify zero tool definitions and wrap slash
+  commands as text. Keep auth-home isolation separate from shared CLI updates.
+- Grok shell groups can detach. Preserve descendant PID/start-identity cleanup
+  after root exit, drain background children and automatic parent continuation
+  before finalizing usage, and never retry interrupted tool work. Details:
+  `docs/spec-grok-build.md` and proposed ADR-0092.
+
 - Use PM2 for local server management; do not run `node server.js` directly.
 - Avoid adding npm scripts or update flows that accidentally restart Agent
   Cockpit via PM2 unless the request is specifically about server lifecycle.

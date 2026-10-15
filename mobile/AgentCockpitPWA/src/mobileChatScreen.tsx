@@ -37,6 +37,8 @@ import {
   SendIcon,
 } from './mobileIcons';
 import { Button, ErrorBanner, ProgressBar } from './mobilePrimitives';
+import { GrokBilling } from './grokBilling';
+import { InteractionCard } from './interactionCard';
 import type {
   BackendMetadata,
   ContentBlock,
@@ -90,7 +92,7 @@ export function ChatScreen(props: {
   onAttach: () => void;
   onRemoveAttachment: (id: string) => void;
   onOcrAttachment: (id: string) => void;
-  onSubmitInteraction: () => void;
+  onSubmitInteraction: (answer?: string) => void;
   onRemoveQueued: (index: number) => void;
   onEditQueued: (index: number) => void;
   onMoveQueued: (index: number, direction: -1 | 1) => void;
@@ -332,11 +334,13 @@ export function ChatScreen(props: {
           onClear={props.onClearQueue}
         />
       ) : null}
-      <UsageBar usage={conversation.sessionUsage || conversation.usage} />
+      <UsageBar usage={conversation.sessionUsage || conversation.usage} backend={conversation.backend} />
+      {conversation.backend === 'grok-build' ? <GrokBilling client={props.client} profileId={conversation.cliProfileId} refreshKey={conversation.messages.length} /> : null}
       {props.pendingInteraction ? (
         <InteractionCard
           interaction={props.pendingInteraction}
           answer={props.interactionAnswer}
+          allowPlanFeedback={conversation.backend === 'grok-build'}
           setAnswer={props.setInteractionAnswer}
           onSubmit={props.onSubmitInteraction}
         />
@@ -432,6 +436,7 @@ function GoalStrip(props: {
         <strong>{goalStatusLabel(props.goal)}</strong>
         <span className="goal-elapsed">{elapsed}</span>
         <span className="goal-objective">{props.goal.objective || 'No objective'}</span>
+        {props.goal.backend === 'grok-build' && typeof props.goal.tokenBudget === 'number' ? <span className="goal-elapsed" title="Grok checks budgets between work steps and can exceed them.">Soft budget: {props.goal.tokenBudget.toLocaleString()}</span> : null}
       </div>
       <div className="goal-actions">
         {canPause ? <button type="button" onClick={props.onPause}>Pause</button> : null}
@@ -870,28 +875,7 @@ function AttachmentTray(props: { attachments: PendingAttachment[]; onRemove: (id
   );
 }
 
-function InteractionCard(props: {
-  interaction: PendingInteraction;
-  answer: string;
-  setAnswer: (value: string) => void;
-  onSubmit: () => void;
-}) {
-  return (
-    <section className="interaction-card">
-      <strong>{props.interaction.kind === 'plan' ? 'Plan Approval' : 'Question'}</strong>
-      <p>{props.interaction.prompt}</p>
-      {props.interaction.kind === 'question' ? (
-        <div className="button-row">
-          {props.interaction.options.map((option) => <Button key={option.label} label={option.label} onClick={() => props.setAnswer(option.label)} />)}
-        </div>
-      ) : null}
-      <textarea value={props.answer} onChange={(event) => props.setAnswer(event.target.value)} rows={3} />
-      <Button label={props.interaction.kind === 'plan' ? 'Send Response' : 'Answer'} variant="primary" disabled={!props.answer.trim()} onClick={props.onSubmit} />
-    </section>
-  );
-}
-
-function UsageBar({ usage }: { usage?: Usage }) {
+function UsageBar({ usage, backend }: { usage?: Usage; backend?: string }) {
   if (!usage) {
     return null;
   }
@@ -899,7 +883,7 @@ function UsageBar({ usage }: { usage?: Usage }) {
   const context = usage.contextUsagePercentage ?? 0;
   const reportedCost = Number(usage.costUsd) || 0;
   const estimatedCost = Number(usage.estimatedCostUsd) || 0;
-  const estimatedCostLabel = estimatedCost > 0 ? `$${Math.ceil(estimatedCost).toLocaleString()}` : '$0';
+  const estimatedCostLabel = estimatedCost > 0 ? `$${Math.ceil(estimatedCost).toLocaleString()}` : backend === 'grok-build' ? 'n/a' : '$0';
   return (
     <div className="usage-bar">
       <div>
@@ -908,8 +892,8 @@ function UsageBar({ usage }: { usage?: Usage }) {
         <span className="usage-track"><i style={{ width: `${Math.min(100, Math.max(4, context))}%` }} /></span>
       </div>
       <div>
-        <span className="usage-label">Cost</span>
-        <span className="usage-value">${reportedCost.toFixed(4)}</span>
+        <span className="usage-label">{backend === 'grok-build' ? 'Reported model cost' : 'Cost'}</span>
+        <span className="usage-value">{usage.costSource === 'none' ? 'n/a' : `$${reportedCost.toFixed(4)}`}</span>
         <span className="usage-track"><i style={{ width: `${reportedCost > 0 ? 18 : 4}%` }} /></span>
       </div>
       <div>

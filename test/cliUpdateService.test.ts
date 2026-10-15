@@ -163,6 +163,29 @@ describe('CliUpdateService', () => {
     });
   });
 
+  test('checks the native Grok updater and targets the shared executable home', async () => {
+    const grok = path.join(tmpDir, 'grok');
+    fs.writeFileSync(grok, '#!/bin/sh\n');
+    settings = { ...settings, defaultBackend: 'grok-build', cliProfiles: [{
+      id: 'grok-isolated', name: 'Grok account', harness: 'grok-build', authMode: 'account', command: grok,
+      configDir: path.join(tmpDir, 'account'), env: { GROK_HOME: path.join(tmpDir, 'account-env') },
+      createdAt: '2026-10-13T00:00:00Z', updatedAt: '2026-10-13T00:00:00Z',
+    }] };
+    mockExecFile((cmd, args) => {
+      if (cmd === grok && args.join(' ') === '--version') return 'grok 1.0.52';
+      if (cmd === 'npm' && args.join(' ') === 'root -g') return npmRoot;
+      if (cmd === grok && args.join(' ') === '--no-auto-update update --check --json') return JSON.stringify({ latestVersion: '1.0.53', error: null });
+      return new Error(`unexpected command: ${cmd} ${args.join(' ')}`);
+    });
+    const service = new CliUpdateService(tmpDir);
+    const status = await service.checkNow(async () => settings);
+    const target = status.items.find(item => item.profileIds.includes('grok-isolated'))!;
+    expect(target).toMatchObject({ harness: 'grok-build', installMethod: 'self-update', currentVersion: '1.0.52', latestVersion: '1.0.53', updateAvailable: true, updateCommand: [grok, 'update'] });
+    const nativeCheck = mockExecFileFn.mock.calls.find(call => call[0] === grok && call[1].includes('--check'))!;
+    expect(nativeCheck[2].env.GROK_HOME).toBe(process.env.GROK_HOME);
+    expect(nativeCheck[2].env.GROK_DISABLE_AUTOUPDATER).toBe('1');
+  });
+
   test('adds Claude Code Interactive compatibility caution to the shared Claude CLI target', async () => {
     settings = {
       ...settings,

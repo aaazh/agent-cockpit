@@ -14,6 +14,7 @@
 import { AgentApi } from './api.js';
 import { PlanUsageStore } from './planUsageStore.js';
 import { KiroPlanUsageStore } from './kiroPlanUsageStore.js';
+import { GrokPlanUsageStore } from './grokPlanUsageStore.js';
 import { CodexPlanUsageStore } from './codexPlanUsageStore.js';
 import { cleanGoalObjectiveText, goalSnapshotTimeMs, isActiveGoal } from './goalState.js';
 import { reduceStreamFrame } from './stream/streamFrameReducer.ts';
@@ -735,7 +736,7 @@ import { reduceStreamFrame } from './stream/streamFrameReducer.ts';
           ? hydrateAttachmentsFromDraft(draft.attachments)
           : cur.pendingAttachments,
       }));
-      if ((data.backend === 'codex' || data.backend === 'claude-code' || data.backend === 'claude-code-interactive') && AgentApi.conv && AgentApi.conv.getGoal) {
+      if ((data.backend === 'codex' || data.backend === 'claude-code' || data.backend === 'claude-code-interactive' || data.backend === 'grok-build') && AgentApi.conv && AgentApi.conv.getGoal) {
         AgentApi.conv.getGoal(convId)
           .then(goalData => {
             const goal = goalData && goalData.goal ? goalData.goal : null;
@@ -771,7 +772,7 @@ import { reduceStreamFrame } from './stream/streamFrameReducer.ts';
     const s = states.get(convId);
     if (!s || !AgentApi.conv || !AgentApi.conv.getGoal) return null;
     const backend = (s.conv && s.conv.backend) || s.composerBackend || null;
-    if (backend && backend !== 'codex' && backend !== 'claude-code' && backend !== 'claude-code-interactive') {
+    if (backend && backend !== 'codex' && backend !== 'claude-code' && backend !== 'claude-code-interactive' && backend !== 'grok-build') {
       applyGoalSnapshot(convId, null);
       return null;
     }
@@ -1187,6 +1188,7 @@ import { reduceStreamFrame } from './stream/streamFrameReducer.ts';
     const store = (conv.backend === 'claude-code' || conv.backend === 'claude-code-interactive') ? PlanUsageStore
       : conv.backend === 'kiro'        ? KiroPlanUsageStore
       : conv.backend === 'codex'       ? CodexPlanUsageStore
+      : conv.backend === 'grok-build'  ? GrokPlanUsageStore
       : null;
     if (!store || typeof store.refresh !== 'function') return;
     store.refresh(cliProfileId);
@@ -1423,7 +1425,7 @@ import { reduceStreamFrame } from './stream/streamFrameReducer.ts';
       ? s.composerServiceTier
       : (s.conv && s.conv.serviceTier) || null;
     const goalStartedAtMs = Date.now();
-    const optimisticBackend = (sendBackend === 'codex' || sendBackend === 'claude-code' || sendBackend === 'claude-code-interactive') ? sendBackend : undefined;
+    const optimisticBackend = (sendBackend === 'codex' || sendBackend === 'claude-code' || sendBackend === 'claude-code-interactive' || sendBackend === 'grok-build') ? sendBackend : undefined;
     const optimisticGoal = {
       backend: optimisticBackend,
       objective,
@@ -1673,7 +1675,7 @@ import { reduceStreamFrame } from './stream/streamFrameReducer.ts';
       composerBackend: value || null,
       composerClaudeCodeMode: isClaudeCodeBackend(value) ? s.composerClaudeCodeMode : null,
       composerServiceTier: value === 'codex' ? s.composerServiceTier : null,
-      goalMode: (value === 'codex' || value === 'claude-code' || value === 'claude-code-interactive') ? s.goalMode : false,
+      goalMode: (value === 'codex' || value === 'claude-code' || value === 'claude-code-interactive' || value === 'grok-build') ? s.goalMode : false,
     });
   }
   function setComposerCliProfile(convId, profileId, backendId){
@@ -1686,7 +1688,7 @@ import { reduceStreamFrame } from './stream/streamFrameReducer.ts';
       composerEffort: null,
       composerClaudeCodeMode: isClaudeCodeBackend(backendId) ? s.composerClaudeCodeMode : null,
       composerServiceTier: backendId === 'codex' ? s.composerServiceTier : null,
-      goalMode: (backendId === 'codex' || backendId === 'claude-code' || backendId === 'claude-code-interactive') ? s.goalMode : false,
+      goalMode: (backendId === 'codex' || backendId === 'claude-code' || backendId === 'claude-code-interactive' || backendId === 'grok-build') ? s.goalMode : false,
     });
   }
   function setComposerModel(convId, value){
@@ -2208,6 +2210,7 @@ import { reduceStreamFrame } from './stream/streamFrameReducer.ts';
     const s = states.get(convId);
     if (!s || !text || s.respondPending) return;
     if (!s.pendingInteraction) return;
+    const interaction = s.pendingInteraction;
 
     update(convId, { respondPending: true });
 
@@ -2228,14 +2231,18 @@ import { reduceStreamFrame } from './stream/streamFrameReducer.ts';
     }
 
     if (mode === 'stdin') {
-      update(convId, cur => ({
-        ...cur,
-        pendingInteraction: null,
-        uiState: cur.streaming
-          ? 'streaming'
-          : (cur.streamError ? 'error' : null),
-        respondPending: false,
-      }));
+      update(convId, cur => {
+        // The stream can present the next question before this request finishes.
+        const pendingInteraction = cur.pendingInteraction === interaction ? null : cur.pendingInteraction;
+        return {
+          ...cur,
+          pendingInteraction,
+          uiState: pendingInteraction ? 'awaiting' : cur.streaming
+            ? 'streaming'
+            : (cur.streamError ? 'error' : null),
+          respondPending: false,
+        };
+      });
       return;
     }
 

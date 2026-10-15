@@ -14,6 +14,7 @@ import { BackendRegistry } from './src/services/backends/registry';
 import { ClaudeCodeAdapter } from './src/services/backends/claudeCode';
 import { ClaudeCodeInteractiveAdapter } from './src/services/backends/claudeCodeInteractive';
 import { KiroAdapter } from './src/services/backends/kiro';
+import { GrokBuildAdapter } from './src/services/backends/grok';
 import { CodexAdapter } from './src/services/backends/codex';
 import { OpenCodeAdapter } from './src/services/backends/opencode';
 import { UpdateService } from './src/services/updateService';
@@ -105,6 +106,7 @@ const backendRegistry = new BackendRegistry();
 backendRegistry.register(new ClaudeCodeAdapter({ workingDir: config.DEFAULT_WORKSPACE }));
 backendRegistry.register(new ClaudeCodeInteractiveAdapter({ workingDir: config.DEFAULT_WORKSPACE }));
 backendRegistry.register(new KiroAdapter({ workingDir: config.DEFAULT_WORKSPACE }));
+backendRegistry.register(new GrokBuildAdapter({ workingDir: config.DEFAULT_WORKSPACE }));
 backendRegistry.register(new CodexAdapter({
   workingDir: config.DEFAULT_WORKSPACE,
   approvalPolicy: config.CODEX_APPROVAL_POLICY,

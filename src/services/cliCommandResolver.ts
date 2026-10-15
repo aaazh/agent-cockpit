@@ -20,11 +20,13 @@ const HARNESS_COMMANDS: Partial<Record<CliHarness, string>> = {
   'claude-code': 'claude',
   codex: 'codex',
   opencode: 'opencode',
+  'grok-build': 'grok',
 };
 
 const HARNESS_PACKAGES: Partial<Record<CliHarness, string[]>> = {
   'claude-code': ['node_modules', '@anthropic-ai', 'claude-code', 'bin', 'claude.exe'],
   codex: ['node_modules', '@openai', 'codex', 'bin', 'codex.js'],
+  'grok-build': ['node_modules', '@xai-official', 'grok', 'bin', 'grok'],
 };
 
 const POSIX_USER_BIN_DIRS = [
@@ -71,6 +73,13 @@ export function windowsCliCommandCandidates(
   const defaultCommand = command.replace(/[.](?:cmd|exe)$/i, '');
   const candidates: CliCommandResolution[] = [];
   const prefixes = windowsCliPrefixes(env, extraPrefixes);
+  if (harness === 'grok-build') {
+    const home = env.USERPROFILE || env.HOME;
+    for (const root of uniqueDirs([env.GROK_HOME, home ? joinForBase(home, '.grok') : null])) {
+      const binary = joinForBase(root, 'bin', 'grok.exe');
+      if (fs.existsSync(binary)) candidates.push({ command: binary, displayCommand: binary });
+    }
+  }
   for (const prefix of prefixes) {
     const packageCandidate = windowsPackageCandidate(harness, prefix, env);
     if (packageCandidate && candidateExists(packageCandidate, env)) candidates.push(packageCandidate);
@@ -131,6 +140,14 @@ export function nonWindowsCliCommandCandidates(
       candidates.push({ command: candidate, displayCommand: candidate });
     }
   }
+  if (harness === 'grok-build' && env.HOME) {
+    if (env.GROK_HOME) {
+      const candidate = path.join(env.GROK_HOME, 'bin', command);
+      candidates.push({ command: candidate, displayCommand: candidate });
+    }
+    const candidate = path.join(env.HOME, '.grok', 'bin', command);
+    candidates.push({ command: candidate, displayCommand: candidate });
+  }
   return dedupeCandidates(candidates);
 }
 
@@ -161,7 +178,7 @@ function resolveExplicitWindowsCommand(
   if (/[.](?:cmd|bat)$/i.test(command)) {
     return { command, windowsCmdShim: true, displayCommand: command };
   }
-  if (/[.]js$/i.test(command)) {
+  if (/[.]js$/i.test(command) || harness === 'grok-build' && /[\\/]@xai-official[\\/]grok[\\/]bin[\\/]grok$/i.test(command)) {
     return {
       command: windowsNodeCommand(env),
       argsPrefix: [command],
@@ -182,7 +199,7 @@ function windowsPackageCandidate(harness: CliHarness, prefix: string, env: NodeJ
   const rel = HARNESS_PACKAGES[harness];
   if (!rel) return null;
   const target = joinForBase(prefix, ...rel);
-  if (harness === 'codex') {
+  if (harness === 'codex' || harness === 'grok-build') {
     return {
       command: windowsNodeCommand(env),
       argsPrefix: [target],
