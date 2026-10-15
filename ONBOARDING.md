@@ -24,6 +24,7 @@ Install the following before you begin:
 | **OpenAI Codex CLI** | `npm install -g @openai/codex` | `codex --version` |
 | **Kiro CLI** | [kiro.dev](https://kiro.dev) | `kiro-cli version` |
 | **OpenCode CLI** | [OpenCode CLI docs](https://opencode.ai/docs/cli/) | `opencode --version` |
+| **Grok Build CLI** | [Grok Build docs](https://docs.x.ai/build/overview) or `npm install -g @xai-official/grok` | `grok --version` |
 | **cloudflared** | `brew install cloudflared` | `cloudflared --version` |
 | **PM2** | Installed as a project dependency | `npx pm2 --version` after Agent Cockpit dependencies are installed |
 
@@ -83,7 +84,7 @@ of the manual release test matrix.
 
 After owner setup, the authenticated welcome flow shows install/doctor checks
 for Node, npm, PM2, writable data paths, built web/mobile assets, backend CLIs,
-and optional document/tunnel tools. If you use the installer, skip the manual
+and optional document tools. If you use the installer, skip the manual
 clone/environment/PM2 sections below unless you are customizing the deployment.
 
 ---
@@ -298,9 +299,9 @@ Agent Cockpit runs the selected CLI profile on the server machine. Keep each CLI
 working in a normal terminal first, then use Agent Cockpit Settings to choose
 the profile, protocol, provider, model, and auth mode that match that CLI.
 
-Claude Code and Codex can use Cockpit-managed account profiles. Kiro and
-OpenCode are self-configured in Agent Cockpit: configure their provider or
-account state in the CLI's own tools, then select the matching profile in
+Claude Code, Codex, and Grok Build can use Cockpit-managed account profiles.
+Kiro and OpenCode are self-configured in Agent Cockpit: configure their provider
+or account state in the CLI's own tools, then select the matching profile in
 Agent Cockpit.
 
 ---

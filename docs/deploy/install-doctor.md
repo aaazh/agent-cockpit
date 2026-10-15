@@ -37,7 +37,7 @@ Optional checks include:
 - Claude Code CLI;
 - OpenAI Codex CLI;
 - Kiro CLI;
-- OpenCode CLI;
+- Grok Build CLI;
 - Pandoc;
 - LibreOffice;
 - mobile PWA build;
@@ -56,8 +56,9 @@ Some checks expose allowlisted install actions. The browser never sends shell
 command text to the server. It sends an action id, and the server runs the
 predefined command when no active conversation is running.
 
-On Windows, Claude Code and Codex install actions use Agent Cockpit's per-user
-`cli-tools` prefix and the installer-recorded private Node runtime when present.
+On Windows, Claude Code, Codex, and Grok Build install actions use Agent
+Cockpit's per-user `cli-tools` prefix and the installer-recorded private Node
+runtime when present.
 That keeps the welcome flow independent of global Node/npm/PM2 installs.
 
 ## Related Specs

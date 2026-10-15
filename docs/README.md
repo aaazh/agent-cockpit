@@ -1,9 +1,9 @@
 # Agent Cockpit Documentation
 
 Agent Cockpit is a local browser cockpit for CLI-based AI agents. It gives you a
-browser interface for Claude Code, OpenAI Codex, Kiro, and OpenCode while keeping
-conversations, memory, knowledge-base material, workspace context, and routines
-on your machine.
+browser interface for Claude Code, OpenAI Codex, Kiro, OpenCode, and Grok Build
+while keeping conversations, memory, knowledge-base material, workspace context,
+and routines on your machine.
 
 Use this page as the public documentation entry point. The implementation
 specification remains in [SPEC.md](SPEC.md).
@@ -30,6 +30,7 @@ server.
 
 - [Deploy Guide](deploy/README.md)
 - [macOS install](deploy/macos.md)
+- [Linux install](deploy/linux.md)
 - [Windows install](deploy/windows.md)
 - [Remote access](deploy/remote-access.md)
 - [Security and owner auth](deploy/security.md)

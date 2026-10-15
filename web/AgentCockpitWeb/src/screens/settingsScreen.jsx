@@ -5,6 +5,7 @@ import { Tip } from '../tooltip.jsx';
 import { useDialog } from '../dialog.jsx';
 import { useToasts } from '../toast.jsx';
 import { CliUpdateStore } from '../cliUpdateStore.js';
+import { cliConfigDirField } from './cliProfileConfigDir.js';
 
 const MigrationTab = React.lazy(() => import('./settingsMigrationTab.jsx').then(mod => ({ default: mod.MigrationTab })));
 const ArchivedWorkspacesPanel = React.lazy(() => import('./archivedWorkspaces.jsx').then(mod => ({ default: mod.ArchivedWorkspacesPanel })));
@@ -1486,11 +1487,11 @@ function CliProfilesTab({ settings, backends, onPatch, onSave, saving, onValidat
 
                   {isAccount ? (
                     <>
-                      <Field label="Config directory" hint={profile.harness === 'codex' ? 'Maps to CODEX_HOME at runtime.' : 'Maps to CLAUDE_CONFIG_DIR at runtime.'}>
+                      <Field label="Config directory" hint={cliConfigDirField(profile.harness).hint}>
                         <input
                           className="inp u-mono"
                           value={profile.configDir || ''}
-                          placeholder={profile.harness === 'codex' ? '/Users/server/.codex-account' : '/Users/server/.claude-account'}
+                          placeholder={cliConfigDirField(profile.harness).placeholder}
                           onChange={(e) => patchProfile(profile.id, { configDir: e.target.value || undefined })}
                         />
                       </Field>

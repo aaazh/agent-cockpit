@@ -1405,8 +1405,8 @@ next startup reconciliation pass uses the same durable terminal path.
 `runtime` is operational metadata, not an audit log. `processStream` writes
 `runtime.externalSessionId` when it consumes an adapter's `external_session`
 event, and merges `backend_runtime` events carrying process IDs and backend
-active-turn IDs. Claude Code, Claude Code Interactive, Kiro, and Codex emit
-`processId` when their local child process is available; Codex records the app-server turn id from the
+active-turn IDs. Claude Code, Claude Code Interactive, Kiro, Codex, and Grok
+Build emit `processId` when their local child process is available; Codex records the app-server turn id from the
 `turn/start` response path, emits it as `backend_runtime.activeTurnId` from
 that path, and dedupes `turn/started` if the notification is also emitted.
 Today those identifiers support diagnostics and
