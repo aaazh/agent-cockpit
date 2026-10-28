@@ -44,6 +44,12 @@ tool is unavailable.
 
 ## Releases And Installers
 
+- This Fork pins production release checks to `UPDATE_REPOSITORY` (default
+  `aaazh/agent-cockpit`), including when old install metadata points upstream.
+- External runs use an independent read-only `ExternalSessionSource` contract,
+  never native thread resume. `MONITOR_ONLY=true` creates no native runtime,
+  MCP listener, scheduler or updater, and requires Owner auth on loopback.
+
 - Production installs update from GitHub Releases. Development installs track
   `main`. Do not add extra release channels unless that decision changes.
 - Release procedure belongs in repo markdown outside GitHub Actions and is

@@ -2,6 +2,17 @@
 
 [← Back to index](SPEC.md)
 
+External monitoring has dedicated tests:
+
+| File | Coverage |
+| --- | --- |
+| `test/externalSessions.test.ts` | Fixed Bearer upstream requests, bounded validated responses, redirect/size/error handling, Owner requirement and rejection of native HTTP/WebSocket execution |
+| `test/externalMonitorUi.test.ts` | List/detail UI, safe text rendering, four-second polling, hidden-tab pause and pagination |
+| `test/monitorStartup.test.ts` | Monitor startup skips native runtime construction, chat routing, update service and pending data imports |
+
+Related configuration, loopback Owner setup and Fork update source tests are in
+`test/config.test.ts`, `test/auth.test.ts` and `test/installStateService.test.ts`.
+
 ---
 
 ## Test Suite

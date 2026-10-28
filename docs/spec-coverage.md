@@ -2,6 +2,14 @@
 
 [<- Back to index](SPEC.md)
 
+External monitoring ownership is defined in
+[spec-external-monitoring.md](spec-external-monitoring.md), covering
+`src/contracts/externalSessions.ts`, `src/services/externalSessionSource.ts`,
+`src/services/monitorServer.ts`, `src/routes/externalSessions.ts`,
+`src/middleware/monitorOnly.ts`, `public/monitor/` and the startup branch in
+`server.ts`. The contracts/source routes and static UI have focused tests in
+`test/externalSessions.test.ts` and `test/externalMonitorUi.test.ts`.
+
 ---
 
 This document is the coverage map for the repository documentation. The source

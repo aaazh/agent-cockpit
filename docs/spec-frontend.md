@@ -2,6 +2,12 @@
 
 [← Back to index](SPEC.md)
 
+The desktop sidebar links to `/monitor/`, a separate responsive read-only
+external run list/detail page. It requires Owner login but no model onboarding,
+uses four-second serialized polling, pauses while hidden, and displays plain
+text transcripts/events. `MONITOR_ONLY=true` redirects desktop/mobile entry
+pages here. Details: [External Session Monitoring](spec-external-monitoring.md).
+
 Grok Build profile, billing, interaction, and native goal behavior is specified in
 [spec-grok-build.md](spec-grok-build.md). Settings adds **Grok Build** to Harness,
 with `grok` command and `GROK_HOME` account isolation. Welcome exposes its

@@ -8,6 +8,11 @@ export type WebBuildMode = 'auto' | 'skip';
 
 export interface AppConfig {
   PORT: number;
+  HOST: string;
+  MONITOR_ONLY: boolean;
+  EXTERNAL_SESSION_SOURCE_URL: string;
+  EXTERNAL_SESSION_SOURCE_TOKEN: string;
+  UPDATE_REPOSITORY: string;
   SESSION_SECRET: string;
   GOOGLE_CLIENT_ID: string;
   GOOGLE_CLIENT_SECRET: string;

@@ -141,6 +141,12 @@ ADR-0092.
 
 # Server Management
 
+External monitoring belongs to the independent `ExternalSessionSource`
+contract and `/monitor/` page. Never inspect external live runs through native
+thread resume. `MONITOR_ONLY` must keep the entire native runtime, MCP listeners,
+schedulers and updater uninitialized, reject HTTP/WebSocket execution, and
+require Owner auth even on loopback. See `docs/spec-external-monitoring.md`.
+
 NEVER run `node server.js` directly. This causes orphan processes and port conflicts.
 
 Always use pm2:

@@ -4,12 +4,13 @@ import { atomicWriteFile } from '../utils/atomicWrite';
 import type { InstallChannel, InstallNodeRuntime, InstallSource, InstallStartup, InstallStateSource, InstallStatus } from '../types';
 
 const SCHEMA_VERSION = 1;
-const DEFAULT_REPO = 'daronyondem/agent-cockpit';
+const DEFAULT_REPO = 'aaazh/agent-cockpit';
 
 interface InstallStateServiceOptions {
   appRoot: string;
   dataRoot: string;
   repo?: string;
+  repositoryOverride?: string;
   branch?: string;
   version?: string;
 }
@@ -75,6 +76,7 @@ export class InstallStateService {
   private _dataRoot: string;
   private _manifestPath: string;
   private _repo: string;
+  private _repositoryOverride: string | null;
   private _branch: string;
   private _version: string | null;
 
@@ -83,6 +85,7 @@ export class InstallStateService {
     this._dataRoot = options.dataRoot;
     this._manifestPath = path.join(options.dataRoot, 'install.json');
     this._repo = options.repo || DEFAULT_REPO;
+    this._repositoryOverride = options.repositoryOverride || null;
     this._branch = options.branch || 'main';
     this._version = options.version ?? readPackageVersion(options.appRoot);
   }
@@ -148,7 +151,7 @@ export class InstallStateService {
       schemaVersion: SCHEMA_VERSION,
       channel,
       source,
-      repo: stringOrNull(parsed.repo) || this._repo,
+      repo: this._repositoryOverride || stringOrNull(parsed.repo) || this._repo,
       version: stringOrNull(parsed.version) || this._version,
       branch: source === 'git-main' ? stringOrNull(parsed.branch) || this._branch : stringOrNull(parsed.branch),
       installDir: stringOrNull(parsed.installDir) || this._appRoot,
@@ -168,7 +171,7 @@ export class InstallStateService {
       schemaVersion: SCHEMA_VERSION,
       channel: 'dev',
       source: 'git-main',
-      repo: this._repo,
+      repo: this._repositoryOverride || this._repo,
       version: this._version,
       branch: this._branch,
       installDir: this._appRoot,

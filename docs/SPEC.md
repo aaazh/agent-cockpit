@@ -14,6 +14,7 @@
 | 5. Workspace Context Feature | [spec-workspace-context.md](spec-workspace-context.md) | Markdown-first workspace operating memory, CLI-maintained context files, scan and maintenance runs |
 | 6. Workspace Routines | [spec-routines.md](spec-routines.md) | Workspace-owned markdown workflows, scheduled/manual harness runs, proposal installation, run folders, and Telegram outreach destination pairing |
 | 7. Server Initialization & Security | [spec-server-security.md](spec-server-security.md) | Config, startup order, auth, CSRF, CSP |
+| 7.1 External Session Monitoring | [spec-external-monitoring.md](spec-external-monitoring.md) | Read-only external runs, source contract, monitoring mode, Owner auth and listen address |
 | 8. Frontend Behavior | [spec-frontend.md](spec-frontend.md) | SPA architecture, streaming, KB browser, settings |
 | 9. Mobile PWA Client | [spec-mobile-pwa.md](spec-mobile-pwa.md) | Installable mobile web client architecture, implemented slice, deferred work |
 | 10. Export, Limitations & Deployment | [spec-deployment.md](spec-deployment.md) | Markdown export, known limitations, deployment |

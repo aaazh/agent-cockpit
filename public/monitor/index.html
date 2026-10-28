@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>External runs · Agent Cockpit</title>
+  <link rel="stylesheet" href="/monitor/monitor.css">
+  <script src="/monitor/monitor.js" defer></script>
+</head>
+<body>
+  <header>
+    <div class="brand"><img src="/logo-full-no-text.svg" alt="" width="58" height="30"><span>Agent Cockpit</span><span class="pill">Read only</span></div>
+    <nav aria-label="Account"><a id="cockpit-link" href="/v2/" hidden>Open Cockpit</a><a href="/auth/logout">Sign out</a></nav>
+  </header>
+  <main>
+    <div class="heading"><div><p class="eyebrow">EXTERNAL SESSION SOURCE</p><h1>Run monitor</h1><p>Conversation history and execution events from your connected agent service.</p></div><button id="refresh" type="button">Refresh latest</button></div>
+    <p id="connection" role="status" aria-live="polite">Connecting…</p>
+    <div class="workspace">
+      <aside aria-label="External runs"><div class="section-title"><h2>Runs</h2><span id="run-count">0</span></div><div id="runs"><p class="empty">Loading runs…</p></div><button id="older" type="button" hidden>Older runs</button></aside>
+      <section class="detail" aria-label="Run detail"><div id="detail"><p class="empty">Choose a run to inspect its transcript and events.</p></div></section>
+    </div>
+  </main>
+</body>
+</html>

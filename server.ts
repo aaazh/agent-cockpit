@@ -31,15 +31,21 @@ import { WebBuildService } from './src/services/webBuildService';
 import { MobileBuildService } from './src/services/mobileBuildService';
 import { logger } from './src/utils/logger';
 import type { Request, Response, NextFunction } from './src/types';
+import { HttpExternalSessionSource } from './src/services/externalSessionSource';
+import { createExternalSessionRouter } from './src/routes/externalSessions';
+import { requireOwnerAuth, rejectMonitorExecution } from './src/middleware/monitorOnly';
+import { startMonitorServer } from './src/services/monitorServer';
 
 const FileStore = FileStoreFactory(session);
 const log = logger.child({ module: 'server' });
 
-const pendingImport = DataMigrationService.applyPendingImport(config.AGENT_COCKPIT_DATA_DIR);
-if (pendingImport.applied) {
-  log.info('Applied pending data import', { backupPath: pendingImport.backupPath });
-} else if (pendingImport.error) {
-  log.error('Pending data import failed', { error: pendingImport.error });
+if (!config.MONITOR_ONLY) {
+  const pendingImport = DataMigrationService.applyPendingImport(config.AGENT_COCKPIT_DATA_DIR);
+  if (pendingImport.applied) {
+    log.info('Applied pending data import', { backupPath: pendingImport.backupPath });
+  } else if (pendingImport.error) {
+    log.error('Pending data import failed', { error: pendingImport.error });
+  }
 }
 
 const app = express();
@@ -102,6 +108,21 @@ app.get('/api/csrf-token', (req: Request, res: Response) => {
 
 app.get('/api/me', meHandler);
 
+const externalSource = config.EXTERNAL_SESSION_SOURCE_URL
+  ? new HttpExternalSessionSource(config.EXTERNAL_SESSION_SOURCE_URL, config.EXTERNAL_SESSION_SOURCE_TOKEN)
+  : null;
+app.use('/api/monitoring', createExternalSessionRouter(externalSource, config.MONITOR_ONLY));
+app.use('/monitor', requireOwnerAuth, express.static(path.join(__dirname, 'public', 'monitor')));
+
+if (config.MONITOR_ONLY) {
+  app.use('/api/chat', rejectMonitorExecution);
+  app.get(['/', '/v2', '/v2/*', '/mobile', '/mobile/*'], (_req, res) => { res.redirect('/monitor/'); });
+  startMonitorServer(app, config);
+} else {
+  startNativeServer();
+}
+
+function startNativeServer(): void {
 const backendRegistry = new BackendRegistry();
 backendRegistry.register(new ClaudeCodeAdapter({ workingDir: config.DEFAULT_WORKSPACE }));
 backendRegistry.register(new ClaudeCodeInteractiveAdapter({ workingDir: config.DEFAULT_WORKSPACE }));
@@ -128,6 +149,7 @@ const mobileBuildService = new MobileBuildService(__dirname, { mode: config.WEB_
 const installStateService = new InstallStateService({
   appRoot: __dirname,
   dataRoot: config.AGENT_COCKPIT_DATA_DIR,
+  repositoryOverride: config.UPDATE_REPOSITORY,
 });
 const updateService = new UpdateService(__dirname, {
   webBuildService,
@@ -172,7 +194,7 @@ function checkPort(port: number): Promise<boolean> {
     const tester = net.createServer()
       .once('error', () => resolve(false))
       .once('listening', () => { tester.close(() => resolve(true)); })
-      .listen(port);
+      .listen(port, config.HOST);
   });
 }
 
@@ -277,7 +299,7 @@ chatService.initialize().then(async () => {
     console.warn('[kb] Pandoc detection failed:', (err as Error).message);
   });
 
-  const server = app.listen(config.PORT, () => {
+  const server = app.listen(config.PORT, config.HOST, () => {
     console.log(`Agent Cockpit running on port ${config.PORT}`);
   });
 
@@ -319,3 +341,4 @@ chatService.initialize().then(async () => {
   console.error('[startup] Fatal initialization error:', err);
   process.exit(1);
 });
+}

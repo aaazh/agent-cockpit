@@ -798,6 +798,7 @@ function storedCredential(passkey: LocalPasskeyCredential): WebAuthnCredential {
 }
 
 export function setupAuth(app: ExpressApp, config: AppConfig): void {
+  app.locals.monitorOnly = config.MONITOR_ONLY;
   const localAuth = new LocalAuthStore(config.AUTH_DATA_DIR);
   const legacyOAuthEnabled = config.AUTH_ENABLE_LEGACY_OAUTH;
   const hasGoogle = legacyOAuthEnabled && config.GOOGLE_CLIENT_ID && config.GOOGLE_CLIENT_SECRET;
@@ -961,7 +962,7 @@ export function setupAuth(app: ExpressApp, config: AppConfig): void {
         displayName: stringField(body.displayName),
         password: stringField(body.password),
       });
-      loginAndFinish(req, res, next, localUserFromOwner(owner), { redirectTo: '/v2/?welcome=1' });
+      loginAndFinish(req, res, next, localUserFromOwner(owner), { redirectTo: config.MONITOR_ONLY ? '/monitor/' : '/v2/?welcome=1' });
     } catch (err) {
       if (err instanceof LocalAuthError) {
         res.status(400).send(renderSetupPage(req, err.message));
@@ -1368,6 +1369,7 @@ export function setupAuth(app: ExpressApp, config: AppConfig): void {
 }
 
 function isLocalRequest(req: Request): boolean {
+  if (req.app.locals.monitorOnly) return false;
   const host = req.hostname;
   return host === 'localhost' || host === '127.0.0.1' || host === '::1';
 }
