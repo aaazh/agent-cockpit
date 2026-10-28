@@ -207,6 +207,7 @@ export default [
       'docs/',
       'plans/',
       'dist/',
+      'monitor-dist/',
       'web/AgentCockpitWeb/dist/',
       'mobile/AgentCockpitPWA/node_modules/',
       'mobile/AgentCockpitPWA/dist/'

@@ -1,7 +1,12 @@
 import type { Express } from 'express';
 import type { AppConfig } from '../types';
-import { rejectMonitorWebSockets } from '../middleware/monitorOnly';
+import { rejectMonitorExecution, rejectMonitorWebSockets } from '../middleware/monitorOnly';
 import { logger } from '../utils/logger';
+
+export function mountMonitorOnlyRoutes(app: Express): void {
+  app.use('/api/chat', rejectMonitorExecution);
+  app.get(['/', '/v2', '/v2/*', '/mobile', '/mobile/*'], (_req, res) => { res.redirect('/monitor/'); });
+}
 
 /** No ChatService, model adapter, MCP listener, scheduler or updater is started. */
 export function startMonitorServer(app: Express, config: AppConfig): void {

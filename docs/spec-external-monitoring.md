@@ -30,6 +30,22 @@ loopback, and successful setup lands at `/monitor/`. Keep `SESSION_SECRET` and
 administrative: it may view all runs exposed by the source, and is separate from
 end-user session isolation in that service.
 
+## Standalone monitoring entry
+
+`monitor.ts` uses the shared `createCockpitHttpApp` authentication/session/source
+composition and the same monitor HTTP/WebSocket enforcement as `server.ts`.
+It requires `MONITOR_ONLY=true` and imports no native chat, CLI, Memory, KB,
+Routines or migration modules. Use this entry on hosts where the full app's
+optional native packages cannot be built.
+
+`npm run monitor:build` creates a self-contained CommonJS Node 22+ bundle and
+copies only monitor static assets into `monitor-dist/`. Its build guard rejects
+native runtime inputs. `manifest.json` records the source commit and bundle
+SHA-256. Run `monitor-dist/monitor.cjs` under the existing PM2 supervisor; the
+bundle itself needs no npm dependencies, CLI installation or Vite output.
+Keep persistent configuration and auth/session data outside this directory.
+See [ADR-0094](adr/0094-keep-standalone-monitoring-builds-independent-of-native-runtimes.md).
+
 ## API and source contract
 
 Authenticated browser endpoints:
@@ -102,3 +118,5 @@ and Fork release source pinning. See [ADR-0093](adr/0093-monitor-external-runs-w
 
 `test/monitorStartup.test.ts` verifies the real server composition takes the
 monitor branch without constructing native services or applying data imports.
+
+`test/monitorEntry.test.ts` verifies standalone entry configuration and that native backend imports are unreachable.

@@ -48,7 +48,9 @@ tool is unavailable.
   `aaazh/agent-cockpit`), including when old install metadata points upstream.
 - External runs use an independent read-only `ExternalSessionSource` contract,
   never native thread resume. `MONITOR_ONLY=true` creates no native runtime,
-  MCP listener, scheduler or updater, and requires Owner auth on loopback.
+  MCP listener, scheduler or updater, and requires Owner auth on loopback. Standalone monitoring uses `monitor.ts` and
+  `monitor:build`, shares the HTTP auth/session composition and excludes native
+  runtime modules from its dependency graph.
 
 - Production installs update from GitHub Releases. Development installs track
   `main`. Do not add extra release channels unless that decision changes.

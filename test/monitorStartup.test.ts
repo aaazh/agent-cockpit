@@ -10,7 +10,7 @@ test('monitor-only startup never creates native runtime services or applies pend
   const BackendRegistry = jest.fn();
   const UpdateService = jest.fn();
   const applyPendingImport = jest.fn();
-  jest.doMock('../src/services/monitorServer', () => ({ startMonitorServer }));
+  jest.doMock('../src/services/monitorServer', () => ({ ...jest.requireActual('../src/services/monitorServer'), startMonitorServer }));
   jest.doMock('../src/routes/chat', () => ({ createChatRouter }));
   jest.doMock('../src/services/chatService', () => ({ ChatService }));
   jest.doMock('../src/services/backends/registry', () => ({ BackendRegistry }));
