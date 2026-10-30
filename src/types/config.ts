@@ -10,6 +10,7 @@ export interface AppConfig {
   PORT: number;
   HOST: string;
   MONITOR_ONLY: boolean;
+  MONITOR_PUBLIC_READ: boolean;
   EXTERNAL_SESSION_SOURCE_URL: string;
   EXTERNAL_SESSION_SOURCE_TOKEN: string;
   UPDATE_REPOSITORY: string;

@@ -145,7 +145,9 @@ External monitoring belongs to the independent `ExternalSessionSource`
 contract and `/monitor/` page. Never inspect external live runs through native
 thread resume. `MONITOR_ONLY` must keep the entire native runtime, MCP listeners,
 schedulers and updater uninitialized, reject HTTP/WebSocket execution, and
-require Owner auth even on loopback. The standalone `monitor.ts` entry and
+require Owner auth even on loopback by default. `MONITOR_PUBLIC_READ=true` may
+publish only monitor GET routes when `MONITOR_ONLY=true`; it must never bypass
+Owner account management or enable execution. The standalone `monitor.ts` entry and
 `npm run monitor:build` must keep native runtime dependencies unreachable while
 sharing the same authentication/session composition. See `docs/spec-external-monitoring.md`.
 

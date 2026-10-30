@@ -16,12 +16,13 @@ the two fixed GET requests below. Browser-safe response validation is in
 | --- | --- | --- |
 | `HOST` | `0.0.0.0` | Actual HTTP listen address, including native-mode port guard. Set `127.0.0.1` behind a local reverse proxy or SSH tunnel. |
 | `MONITOR_ONLY` | `false` | When exactly `true`, starts only authentication, CSRF, monitoring routes and static monitor assets. |
+| `MONITOR_PUBLIC_READ` | `false` | When exactly `true` together with `MONITOR_ONLY=true`, publishes only monitor GET pages/assets and monitoring GET APIs without Owner login. Ignored in native mode. |
 | `EXTERNAL_SESSION_SOURCE_URL` | empty | Empty disables the source. Otherwise a root HTTPS URL, or HTTP on `localhost`, `127.0.0.1`, or `[::1]`. Credentials, prefix paths, queries and fragments are rejected at startup. |
 | `EXTERNAL_SESSION_SOURCE_TOKEN` | empty | Required when a source URL is configured. Sent only server-to-server in `Authorization: Bearer …`. Use a dedicated read-only token for monitoring endpoints. |
 | `UPDATE_REPOSITORY` | `aaazh/agent-cockpit` | Pins production release checks/downloads to this Fork, overriding any old install manifest repository. Development update uses the checkout's `origin/main`. |
 
-The monitor page and all monitoring endpoints require an authenticated owner
-session even on loopback. They share existing local password, passkey and
+By default the monitor page and all monitoring endpoints require an authenticated
+owner session even on loopback. They share existing local password, passkey and
 recovery login; no model CLI installation or authentication is needed. In
 monitor-only mode the localhost auth bypass is disabled for all owner auth
 management too. First owner setup requires `AUTH_SETUP_TOKEN`, including on
@@ -29,6 +30,16 @@ loopback, and successful setup lands at `/monitor/`. Keep `SESSION_SECRET` and
 `AUTH_SETUP_TOKEN` nonempty and out of source control. Owner authorization is
 administrative: it may view all runs exposed by the source, and is separate from
 end-user session isolation in that service.
+
+An explicitly published monitor uses `MONITOR_PUBLIC_READ=true` together with
+`MONITOR_ONLY=true`. GET `/monitor/`, monitor static assets and GET
+`/api/monitoring/{status,runs,runs/:id/transcript}` are then mounted before the
+Owner session gate, with no anonymous session cookie creation. This publishes
+all runs and transcripts supplied by the configured source; the source bearer
+credential stays server-side. Other methods and routes retain Owner checks,
+including auth management, and every native chat method and WebSocket upgrade
+remains forbidden. Turning the flag off restores the existing Owner-only view
+without removing Owner data. See [ADR-0095](adr/0095-allow-explicit-public-reads-of-isolated-monitoring-views.md).
 
 ## Standalone monitoring entry
 
@@ -48,9 +59,9 @@ See [ADR-0094](adr/0094-keep-standalone-monitoring-builds-independent-of-native-
 
 ## API and source contract
 
-Authenticated browser endpoints:
+Monitor browser endpoints (Owner session by default, or explicitly published GETs):
 
-* `GET /api/monitoring/status` → `{ enabled, monitorOnly, pollIntervalMs: 4000 }`.
+* `GET /api/monitoring/status` → `{ enabled, monitorOnly, publicRead, pollIntervalMs: 4000 }`.
   Does not return the source URL, token or credentials.
 * `GET /api/monitoring/runs?cursor=<opaque>` → forwards only the optional string
   cursor (maximum 500 characters) to `GET /internal/monitoring/runs` at the fixed
@@ -86,7 +97,8 @@ not grant access to any additional source endpoints.
 Memory/KB MCP listeners, session finalizers, background schedulers, CLI update or
 plan-usage services. It skips pending data imports and web/mobile build
 preflights. `/`, `/v2/*` and `/mobile/*` redirect to `/monitor/`; all `/api/chat/*`
-methods return 403 with `code: 'MONITOR_ONLY'` after authentication, including
+methods return 403 with `code: 'MONITOR_ONLY'` after authentication by default,
+or before authentication in public-read mode, including
 native chat/resume, Memory, KB, Routines and update routes. All WebSocket
 upgrades return 403. There is no client-side switch that enables execution.
 
@@ -95,6 +107,7 @@ The desktop sidebar links to the same independent monitor page. The source is
 still disabled by default. Monitor assets are ordinary static files under
 `public/monitor/` and require no Vite build or model onboarding.
 
+The public read page hides Sign out and shows “No sign-in required · Read only”.
 The page shows run state/times, transcript, optional usage/error and expandable
 execution events. It fetches every four seconds after the previous request
 finishes, uses aborts/generation checks to prevent overlapping updates from
@@ -109,7 +122,8 @@ the PWA route redirects here in monitor-only mode.
 
 `test/externalSessions.test.ts` covers fixed authenticated upstream requests,
 contract bounds/validation, redirects, oversize bodies, path traversal,
-credential-safe errors, owner requirement, disabled sources, denial of HTTP
+credential-safe errors, default Owner requirement, explicit anonymous GET-only
+access, native-mode rejection of that policy, protected Owner management, disabled sources, denial of HTTP
 execution and WebSocket upgrades. `test/externalMonitorUi.test.ts` covers text
 rendering, list/detail, safe four-second polling, pause and pagination.
 `test/auth.test.ts` covers token-protected loopback owner setup without model

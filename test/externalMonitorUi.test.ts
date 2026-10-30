@@ -43,6 +43,21 @@ describe('external monitor UI', () => {
     expect(fetchMock.mock.calls.every(([, init]) => init.credentials === 'same-origin' && !init.headers)).toBe(true);
   });
 
+  test('hides account sign-out and explains the explicitly public read view', async () => {
+    fetchMock.mockImplementation(async (url: string) => ({
+      ok: true, status: 200,
+      json: async () => url.endsWith('/status') ? { enabled: true, monitorOnly: true, publicRead: true } : { items: [run] },
+    }));
+    await flush();
+    // Reinitialize against the current server status after the default bootstrap settles.
+    window.dispatchEvent(new Event('pagehide'));
+    window.eval(fs.readFileSync(path.join(__dirname, '../public/monitor/monitor.js'), 'utf8'));
+    await flush();
+    expect(document.getElementById('signout-link')!.hidden).toBe(true);
+    expect(document.getElementById('public-read-note')!.hidden).toBe(false);
+    expect(document.querySelectorAll('.run')).toHaveLength(1);
+  });
+
   test('polls every four seconds, preserves details, pauses while hidden, and paginates', async () => {
     await flush();
     const count = fetchMock.mock.calls.length;

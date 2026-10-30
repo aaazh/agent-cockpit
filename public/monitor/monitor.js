@@ -118,6 +118,8 @@
       const info = await request('/status', AbortSignal.timeout(8000));
       enabled = info.enabled;
       byId('cockpit-link').hidden = info.monitorOnly;
+      byId('signout-link').hidden = info.publicRead === true;
+      byId('public-read-note').hidden = info.publicRead !== true;
       if (enabled) await refresh();
       else {
         byId('connection').textContent = 'External session source is not configured. Ask the server owner to configure it.';

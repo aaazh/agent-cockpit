@@ -128,6 +128,7 @@ describe('requireAuth middleware', () => {
 const baseConfig: AppConfig = {
   HOST: '127.0.0.1',
   MONITOR_ONLY: false,
+  MONITOR_PUBLIC_READ: false,
   EXTERNAL_SESSION_SOURCE_URL: '',
   EXTERNAL_SESSION_SOURCE_TOKEN: '',
   UPDATE_REPOSITORY: 'aaazh/agent-cockpit',

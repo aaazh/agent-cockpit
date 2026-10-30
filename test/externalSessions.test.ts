@@ -1,5 +1,11 @@
 import http from 'http';
 import express from 'express';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import config from '../src/config';
+import { createCockpitHttpApp } from '../src/services/httpApp';
+import { mountMonitorOnlyRoutes } from '../src/services/monitorServer';
 import { WebSocket } from 'ws';
 import { HttpExternalSessionSource } from '../src/services/externalSessionSource';
 import { createExternalSessionRouter } from '../src/routes/externalSessions';
@@ -90,10 +96,74 @@ describe('read-only monitoring routes', () => {
     });
     await withServer(app(), async base => {
       const response = await fetch(`${base}/api/monitoring/status`);
-      expect(await response.json()).toEqual({ enabled: false, monitorOnly: true, pollIntervalMs: 4000 });
+      expect(await response.json()).toEqual({ enabled: false, monitorOnly: true, publicRead: false, pollIntervalMs: 4000 });
       expect(response.headers.get('cache-control')).toBe('no-store');
       expect((await fetch(`${base}/api/monitoring/runs`)).status).toBe(503);
     });
+  });
+
+  test('publishes only monitoring GETs when explicitly enabled in monitor-only mode', async () => {
+    const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'cockpit-public-read-'));
+    const requests: string[] = [];
+    try {
+      await withServer((req, res) => {
+        requests.push(`${req.method} ${req.url}`);
+        expect(req.headers.authorization).toBe('Bearer source-stays-server-side');
+        res.setHeader('content-type', 'application/json');
+        res.end(JSON.stringify(req.url!.endsWith('/transcript') ? transcript : { items: [run] }));
+      }, async source => {
+        const { app: application } = createCockpitHttpApp({
+          ...config, MONITOR_ONLY: true, MONITOR_PUBLIC_READ: true,
+          SESSION_SECRET: 'public-monitor-test-session-secret',
+          AGENT_COCKPIT_DATA_DIR: dataRoot, AUTH_DATA_DIR: path.join(dataRoot, 'auth'),
+          EXTERNAL_SESSION_SOURCE_URL: source, EXTERNAL_SESSION_SOURCE_TOKEN: 'source-stays-server-side',
+        }, path.join(__dirname, '..'));
+        mountMonitorOnlyRoutes(application);
+        await withServer(application, async base => {
+          const page = await fetch(`${base}/monitor/`, { redirect: 'manual' });
+          expect(page.status).toBe(200);
+          expect(page.headers.get('set-cookie')).toBeNull();
+          expect(await page.text()).toContain('Run monitor');
+          expect((await fetch(`${base}/monitor/monitor.js`)).status).toBe(200);
+          const status = await fetch(`${base}/api/monitoring/status`);
+          expect(await status.json()).toEqual({ enabled: true, monitorOnly: true, publicRead: true, pollIntervalMs: 4000 });
+          expect(status.headers.get('set-cookie')).toBeNull();
+          const runs = await fetch(`${base}/api/monitoring/runs`);
+          expect(await runs.json()).toEqual({ items: [run] });
+          expect(await (await fetch(`${base}/api/monitoring/runs/run-1/transcript`)).json()).toEqual(transcript);
+          for (const method of ['POST', 'PUT', 'PATCH', 'DELETE', 'HEAD']) {
+            expect((await fetch(`${base}/api/monitoring/runs`, { method })).status).toBe(401);
+          }
+          expect((await fetch(`${base}/api/me`)).status).toBe(401);
+          expect((await fetch(`${base}/api/auth/recovery/regenerate`, { method: 'POST' })).status).toBe(401);
+          for (const method of ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']) {
+            for (const route of ['message', 'resume', 'memory', 'kb/dream', 'routines/run', 'update']) {
+              const denied = await fetch(`${base}/api/chat/${route}`, { method });
+              expect(denied.status).toBe(403);
+              expect(await denied.json()).toMatchObject({ code: 'MONITOR_ONLY' });
+            }
+          }
+        });
+      });
+      expect(requests).toEqual(['GET /internal/monitoring/runs', 'GET /internal/monitoring/runs/run-1/transcript']);
+      expect(fs.existsSync(path.join(dataRoot, 'auth', 'owner.json'))).toBe(false);
+    } finally { fs.rmSync(dataRoot, { recursive: true, force: true }); }
+  });
+
+  test('ignores public-read configuration in native mode', async () => {
+    const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'cockpit-native-read-'));
+    try {
+      const { app: application } = createCockpitHttpApp({
+        ...config, MONITOR_ONLY: false, MONITOR_PUBLIC_READ: true,
+        SESSION_SECRET: 'native-monitor-test-session-secret',
+        AGENT_COCKPIT_DATA_DIR: dataRoot, AUTH_DATA_DIR: path.join(dataRoot, 'auth'),
+        EXTERNAL_SESSION_SOURCE_URL: '', EXTERNAL_SESSION_SOURCE_TOKEN: '',
+      }, path.join(__dirname, '..'));
+      await withServer(application, async base => {
+        expect((await fetch(`${base}/api/monitoring/status`)).status).toBe(401);
+        expect((await fetch(`${base}/monitor/`, { redirect: 'manual' })).status).toBe(302);
+      });
+    } finally { fs.rmSync(dataRoot, { recursive: true, force: true }); }
   });
 
   test('sanitizes upstream failures and rejects malformed IDs/cursors', async () => {

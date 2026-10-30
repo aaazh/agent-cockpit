@@ -10,7 +10,7 @@
 <body>
   <header>
     <div class="brand"><img src="/logo-full-no-text.svg" alt="" width="58" height="30"><span>Agent Cockpit</span><span class="pill">Read only</span></div>
-    <nav aria-label="Account"><a id="cockpit-link" href="/v2/" hidden>Open Cockpit</a><a href="/auth/logout">Sign out</a></nav>
+    <nav aria-label="Account"><a id="cockpit-link" href="/v2/" hidden>Open Cockpit</a><span id="public-read-note" hidden>No sign-in required · Read only</span><a id="signout-link" href="/auth/logout">Sign out</a></nav>
   </header>
   <main>
     <div class="heading"><div><p class="eyebrow">EXTERNAL SESSION SOURCE</p><h1>Run monitor</h1><p>Conversation history and execution events from your connected agent service.</p></div><button id="refresh" type="button">Refresh latest</button></div>

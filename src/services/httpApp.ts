@@ -7,7 +7,7 @@ import { ensureCsrfToken } from '../middleware/csrf';
 import { applySecurity } from '../middleware/security';
 import { HttpExternalSessionSource } from './externalSessionSource';
 import { createExternalSessionRouter } from '../routes/externalSessions';
-import { requireOwnerAuth } from '../middleware/monitorOnly';
+import { requireMonitorRead, rejectMonitorExecution } from '../middleware/monitorOnly';
 import type { AppConfig, Request, Response, NextFunction } from '../types';
 
 const FileStore = FileStoreFactory(session);
@@ -63,6 +63,20 @@ export function createCockpitHttpApp(config: AppConfig, appRoot: string) {
 
   setupAuth(app, config);
 
+  const publicRead = config.MONITOR_ONLY && config.MONITOR_PUBLIC_READ;
+  app.locals.monitorPublicRead = publicRead === true;
+  const externalSource = config.EXTERNAL_SESSION_SOURCE_URL
+    ? new HttpExternalSessionSource(config.EXTERNAL_SESSION_SOURCE_URL, config.EXTERNAL_SESSION_SOURCE_TOKEN)
+    : null;
+  const mountMonitoring = () => {
+    app.use('/api/monitoring', createExternalSessionRouter(externalSource, config.MONITOR_ONLY));
+    app.use('/monitor', requireMonitorRead, express.static(path.join(appRoot, 'public', 'monitor')));
+  };
+  if (publicRead) {
+    mountMonitoring();
+    app.use('/api/chat', rejectMonitorExecution);
+  }
+
   app.use(requireAuth);
   app.use(ensureCsrfToken);
 
@@ -74,10 +88,6 @@ export function createCockpitHttpApp(config: AppConfig, appRoot: string) {
 
   app.get('/api/me', meHandler);
 
-  const externalSource = config.EXTERNAL_SESSION_SOURCE_URL
-    ? new HttpExternalSessionSource(config.EXTERNAL_SESSION_SOURCE_URL, config.EXTERNAL_SESSION_SOURCE_TOKEN)
-    : null;
-  app.use('/api/monitoring', createExternalSessionRouter(externalSource, config.MONITOR_ONLY));
-  app.use('/monitor', requireOwnerAuth, express.static(path.join(appRoot, 'public', 'monitor')));
+  if (!publicRead) mountMonitoring();
   return { app, sessionStore };
 }
