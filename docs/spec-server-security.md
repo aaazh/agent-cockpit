@@ -2,6 +2,15 @@
 
 [← Back to index](SPEC.md)
 
+`HOST` controls the actual listen address (default `0.0.0.0`; set
+`127.0.0.1` for a loopback deployment). The optional `MONITOR_ONLY=true`
+startup branch skips imports/migrations and runtime service construction,
+requires Owner authentication even on loopback, and serves only read-only
+external monitoring plus the existing auth lifecycle. First Owner setup then
+requires `AUTH_SETUP_TOKEN` on loopback too. See
+[External Session Monitoring](spec-external-monitoring.md) for the complete
+configuration, authorization, source restrictions and shutdown behavior.
+
 Grok Build supervised runtimes inherit host/profile env with `GROK_HOME` mapped
 from an explicit account `configDir`, while Welcome setup profiles remove that
 override to share terminal auth. They force automatic updates, prompt

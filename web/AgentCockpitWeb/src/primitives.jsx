@@ -578,6 +578,7 @@ export function Sidebar({ activeId = null, onSelect = null, onMarkUnread = null,
       ) : null}
 
       <div className="sb-footer">
+        <a href="/monitor/" title="Read-only external run monitoring" className="sb-footer-icon">External runs</a>
         <SidebarUser user={user}/>
         <span style={{display:"inline-flex",gap:10,alignItems:"center"}}>
           <button

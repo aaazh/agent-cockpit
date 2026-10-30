@@ -27,7 +27,7 @@ describe('InstallStateService', () => {
 
     expect(status.channel).toBe('dev');
     expect(status.source).toBe('git-main');
-    expect(status.repo).toBe('daronyondem/agent-cockpit');
+    expect(status.repo).toBe('aaazh/agent-cockpit');
     expect(status.version).toBe('1.2.3');
     expect(status.branch).toBe('main');
     expect(status.appDir).toBe(appRoot);
@@ -46,6 +46,12 @@ describe('InstallStateService', () => {
     expect(status.source).toBe('git-main');
     expect(status.stateSource).toBe('corrupt');
     expect(status.stateError).toEqual(expect.any(String));
+  });
+
+  test('pins update repository even when an older install manifest points upstream', async () => {
+    await service.writeState({ channel: 'production', source: 'github-release', repo: 'previous-owner/agent-cockpit' });
+    const pinned = new InstallStateService({ appRoot, dataRoot, repositoryOverride: 'aaazh/agent-cockpit' });
+    expect(pinned.getStatus().repo).toBe('aaazh/agent-cockpit');
   });
 
   test('normalizes legacy manifest shape', () => {

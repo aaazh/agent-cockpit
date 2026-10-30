@@ -126,6 +126,12 @@ describe('requireAuth middleware', () => {
 // ── setupAuth tests ────────────────────────────────────────────────────────
 
 const baseConfig: AppConfig = {
+  HOST: '127.0.0.1',
+  MONITOR_ONLY: false,
+  MONITOR_PUBLIC_READ: false,
+  EXTERNAL_SESSION_SOURCE_URL: '',
+  EXTERNAL_SESSION_SOURCE_TOKEN: '',
+  UPDATE_REPOSITORY: 'aaazh/agent-cockpit',
   PORT: 0,
   SESSION_SECRET: 'test-secret',
   GOOGLE_CLIENT_ID: 'test-google-id',
@@ -195,6 +201,23 @@ async function csrfToken(server: http.Server, cookie: string): Promise<string> {
 }
 
 describe('setupAuth — /auth/login', () => {
+  test('monitor mode requires the setup token on loopback and lands at monitoring without model login', async () => {
+    const app = buildAuthApp({ MONITOR_ONLY: true });
+    app.use(requireAuth);
+    app.get('/api/protected', (_req, res) => { res.json({ ok: true }); });
+    await withServer(app, async server => {
+      expect((await makeRequest(server, 'GET', '/api/protected', 'localhost')).status).toBe(401);
+      expect((await setupOwner(server)).status).toBe(403);
+      const created = await makeRequest(server, 'POST', '/auth/setup', 'localhost', {
+        body: new URLSearchParams({ email: 'owner@example.com', displayName: 'Owner', password: 'correct horse battery staple', setupToken: 'setup-token' }).toString(),
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      });
+      expect(created.status).toBe(302);
+      expect(created.headers.location).toBe('/monitor/');
+      const protectedResponse = await makeRequest(server, 'GET', '/api/protected', 'localhost', { headers: { cookie: cookieFrom(created) } });
+      expect(protectedResponse.status).toBe(200);
+    });
+  });
   test('redirects to setup before the local owner exists', async () => {
     const app = buildAuthApp();
     await withServer(app, async (server) => {

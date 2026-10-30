@@ -1,12 +1,7 @@
 import net from 'net';
 import path from 'path';
 import express from 'express';
-import session from 'express-session';
-import FileStoreFactory from 'session-file-store';
 import config from './src/config';
-import { setupAuth, requireAuth, meHandler } from './src/middleware/auth';
-import { ensureCsrfToken } from './src/middleware/csrf';
-import { applySecurity } from './src/middleware/security';
 import { createChatRouter } from './src/routes/chat';
 import { attachWebSocket } from './src/ws';
 import { ChatService } from './src/services/chatService';
@@ -30,78 +25,31 @@ import { detectPandoc } from './src/services/knowledgeBase/pandoc';
 import { WebBuildService } from './src/services/webBuildService';
 import { MobileBuildService } from './src/services/mobileBuildService';
 import { logger } from './src/utils/logger';
-import type { Request, Response, NextFunction } from './src/types';
+import type { Request, Response } from './src/types';
+import { mountMonitorOnlyRoutes, startMonitorServer } from './src/services/monitorServer';
+import { createCockpitHttpApp } from './src/services/httpApp';
 
-const FileStore = FileStoreFactory(session);
 const log = logger.child({ module: 'server' });
 
-const pendingImport = DataMigrationService.applyPendingImport(config.AGENT_COCKPIT_DATA_DIR);
-if (pendingImport.applied) {
-  log.info('Applied pending data import', { backupPath: pendingImport.backupPath });
-} else if (pendingImport.error) {
-  log.error('Pending data import failed', { error: pendingImport.error });
+if (!config.MONITOR_ONLY) {
+  const pendingImport = DataMigrationService.applyPendingImport(config.AGENT_COCKPIT_DATA_DIR);
+  if (pendingImport.applied) {
+    log.info('Applied pending data import', { backupPath: pendingImport.backupPath });
+  } else if (pendingImport.error) {
+    log.error('Pending data import failed', { error: pendingImport.error });
+  }
 }
 
-const app = express();
+const { app, sessionStore } = createCockpitHttpApp(config, __dirname);
 
-app.set('trust proxy', 1);
+if (config.MONITOR_ONLY) {
+  mountMonitorOnlyRoutes(app);
+  startMonitorServer(app, config);
+} else {
+  startNativeServer();
+}
 
-applySecurity(app);
-
-const sessionStore = new FileStore({
-  path: path.join(config.AGENT_COCKPIT_DATA_DIR, 'sessions'),
-  ttl: 24 * 60 * 60,
-  retries: process.platform === 'win32' ? 3 : 0,
-});
-
-app.use(session({
-  store: sessionStore,
-  secret: config.SESSION_SECRET,
-  resave: false,
-  saveUninitialized: false,
-  // Rolling: every authenticated request resets cookie.maxAge so an active
-  // user never hits the 24h wall mid-workflow. Idle users still expire after
-  // 24h of no activity.
-  rolling: true,
-  cookie: {
-    secure: 'auto',
-    httpOnly: true,
-    sameSite: 'lax',
-    maxAge: 24 * 60 * 60 * 1000,
-  },
-}));
-
-// Passport 0.7 regenerate/save polyfill — must come BEFORE setupAuth
-app.use((req: Request, _res: Response, next: NextFunction) => {
-  if (req.session && !req.session.regenerate) {
-    (req.session as any).regenerate = (cb: () => void) => cb();
-  }
-  if (req.session && !req.session.save) {
-    (req.session as any).save = (cb: () => void) => cb();
-  }
-  next();
-});
-
-// Public brand asset — served without auth so /auth/login can render the
-// Agent Cockpit logo. One targeted route instead of a blanket public-asset
-// mount, so the rest of public/ stays behind requireAuth.
-app.get('/logo-full-no-text.svg', (_req: Request, res: Response): void => {
-  res.sendFile(path.join(__dirname, 'public', 'logo-full-no-text.svg'));
-});
-
-setupAuth(app, config);
-
-app.use(requireAuth);
-app.use(ensureCsrfToken);
-
-app.use(express.json());
-
-app.get('/api/csrf-token', (req: Request, res: Response) => {
-  res.json({ csrfToken: req.session.csrfToken });
-});
-
-app.get('/api/me', meHandler);
-
+function startNativeServer(): void {
 const backendRegistry = new BackendRegistry();
 backendRegistry.register(new ClaudeCodeAdapter({ workingDir: config.DEFAULT_WORKSPACE }));
 backendRegistry.register(new ClaudeCodeInteractiveAdapter({ workingDir: config.DEFAULT_WORKSPACE }));
@@ -128,6 +76,7 @@ const mobileBuildService = new MobileBuildService(__dirname, { mode: config.WEB_
 const installStateService = new InstallStateService({
   appRoot: __dirname,
   dataRoot: config.AGENT_COCKPIT_DATA_DIR,
+  repositoryOverride: config.UPDATE_REPOSITORY,
 });
 const updateService = new UpdateService(__dirname, {
   webBuildService,
@@ -172,7 +121,7 @@ function checkPort(port: number): Promise<boolean> {
     const tester = net.createServer()
       .once('error', () => resolve(false))
       .once('listening', () => { tester.close(() => resolve(true)); })
-      .listen(port);
+      .listen(port, config.HOST);
   });
 }
 
@@ -277,7 +226,7 @@ chatService.initialize().then(async () => {
     console.warn('[kb] Pandoc detection failed:', (err as Error).message);
   });
 
-  const server = app.listen(config.PORT, () => {
+  const server = app.listen(config.PORT, config.HOST, () => {
     console.log(`Agent Cockpit running on port ${config.PORT}`);
   });
 
@@ -319,3 +268,4 @@ chatService.initialize().then(async () => {
   console.error('[startup] Fatal initialization error:', err);
   process.exit(1);
 });
+}

@@ -2,6 +2,17 @@
 
 [← Back to index](SPEC.md)
 
+## External monitoring endpoints
+
+`GET /api/monitoring/status`, `GET /api/monitoring/runs` and
+`GET /api/monitoring/runs/:id/transcript` require an Owner session, including
+on loopback, and proxy only the configured read-only source. They send
+`Cache-Control: no-store`; status never includes upstream credentials. Complete
+response contracts, validation and error codes are in
+[External Session Monitoring](spec-external-monitoring.md). In
+`MONITOR_ONLY=true`, all `/api/chat/*` methods and every WebSocket upgrade are
+denied with 403 and no native execution services are initialized.
+
 ---
 
 All chat endpoints are mounted under `/api/chat`. All require authentication via `requireAuth`. State-changing operations (POST, PUT, PATCH, DELETE) additionally require `csrfGuard`.

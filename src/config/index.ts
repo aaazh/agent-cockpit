@@ -18,6 +18,12 @@ function parseEnum<T extends string>(value: string | undefined, allowed: readonl
 
 const config: AppConfig = {
   PORT: Number(process.env.PORT) || 3334,
+  HOST: process.env.HOST || '0.0.0.0',
+  MONITOR_ONLY: process.env.MONITOR_ONLY === 'true',
+  MONITOR_PUBLIC_READ: process.env.MONITOR_ONLY === 'true' && process.env.MONITOR_PUBLIC_READ === 'true',
+  EXTERNAL_SESSION_SOURCE_URL: process.env.EXTERNAL_SESSION_SOURCE_URL || '',
+  EXTERNAL_SESSION_SOURCE_TOKEN: process.env.EXTERNAL_SESSION_SOURCE_TOKEN || '',
+  UPDATE_REPOSITORY: process.env.UPDATE_REPOSITORY || 'aaazh/agent-cockpit',
   SESSION_SECRET: process.env.SESSION_SECRET || '',
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
   GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || '',

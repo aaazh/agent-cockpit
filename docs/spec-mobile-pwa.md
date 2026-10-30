@@ -2,6 +2,11 @@
 
 [← Back to index](SPEC.md)
 
+With `MONITOR_ONLY=true`, `/mobile/*` redirects to the responsive `/monitor/`
+page after Owner login. External monitoring uses that shared page rather than
+native PWA components, and does not change PWA manifests or cached assets.
+See [External Session Monitoring](spec-external-monitoring.md).
+
 Grok Build uses the shared mobile profile/model/effort, interaction, tool/Agent,
 artifact, and native goal flows. Its goal strip labels a supplied token budget
 **Soft budget**. Its usage bar labels the value **Reported model cost** and

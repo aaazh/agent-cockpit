@@ -21,3 +21,4 @@ ios/AgentCockpit/.derivedData/
 ios/AgentCockpit/.swiftpm/
 ecosystem.config.js
 plans/
+monitor-dist/
